@@ -1,6 +1,6 @@
 import tornado.options
 import tornado.web
-
+from tornado.escape import json_decode as TornadoJsonDecode
 
 import sys
 from os.path import dirname, abspath
@@ -11,9 +11,13 @@ from custom_logging import logger
 import time 
 import hashlib
 import jwt
+from AuthenticationModule.authentication import auth
 #https://emptysqua.re/blog/refactoring-tornado-coroutines/
 ## finding user from motor  yields a future object which is nothing but a promise that it will have a value in future
 ## and gen.coroutine is a perfect to resolve a future object uyntillit is resolved
+
+
+@auth
 class Signup(tornado.web.RequestHandler):
 
 	def initialize(self):
@@ -37,10 +41,18 @@ class Signup(tornado.web.RequestHandler):
 		email = self.get_argument("email", None)
 		username = self.get_argument("username", None)
 		password = self.get_argument("password", None)
-		state = self.get_argument("state", None)
-		region = self.get_argument("region", None)
+		state = self.request.arguments.get("state") 
+		region = self.request.arguments.get("region") 
 		profile_pic = self.get_argument("profile_pic", None)
 
+
+		
+		if state:
+			state =  list(map(lambda x: x.decode("utf-8"), state))
+		logger.info(state)
+
+		if region:
+			region = list(map(lambda x: x.decode("utf-8"), region)) 
 
 		logger.info("user_type=%s, full_name=%s, user_email=%s, username=%s, \
 			password=%s, state=%s, region=%s"%(user_type, full_name, email,\
@@ -50,8 +62,16 @@ class Signup(tornado.web.RequestHandler):
 		#user = yield db[credentials].find_one({'user_type': user_type, "username": username, "password": password})
 		
 		try:
+			assert isinstance(state, list), "state permissions must be and array"
+			assert isinstance(region, list), "region permissions must be and array"
+
 			if None in [user_type, username, password, email, state, region, full_name]:
 				raise Exception("Fields shouldnt be empty")
+
+			if user_type not in ["accessor", "admin", "evaluator"]:
+				raise Exception("user_type is not allowed")
+
+
 
 			##check if email is already registered with us
 			user = yield self.collection.find_one({"email": email})
@@ -60,8 +80,8 @@ class Signup(tornado.web.RequestHandler):
 
 			user_id = hashlib.sha1(email.encode("utf-8")).hexdigest()
 			user = yield self.collection.insert_one({'user_type': user_type, "username": username,\
-							 "password": password, "region": region, "state": state, "email": email, \
-							 "profile_pic": profile_pic, "utc_epoch": time.time(), "indian_time": indian_time(), "user_id": user_id })
+							 "password": password, "region": region, "state": state,\
+							  "email": email, "profile_pic": profile_pic, "utc_epoch": time.time(), "indian_time": indian_time(), "user_id": user_id })
 			
 			logger.info("User added at %s with user_id %s"%(indian_time(), user_id))
 		
@@ -69,13 +89,13 @@ class Signup(tornado.web.RequestHandler):
 			##executor.submit(task, datetime.datetime.now())
 		except Exception as e:
 				logger.error(e)
-				self.write({"error": False, "success": True, "token": None, "message": e.__str__()})
+				self.write({"error": True, "success": False, "token": None, "message": e.__str__()})
 				self.finish()
 				return 
 
 		##TODO : implement JWT tokens
-		token =  jwt.encode({'username': username, "password": password, "email": email}, 'secret', algorithm='HS256')
-		self.write({"error": False, "success": True, "token": token.decode("utf-8")})
+		token =  jwt.encode({'username': username, "password": password, "email": email, "user_type": user_type}, 'secret', algorithm='HS256')
+		self.write({"error": False, "success": True, "token": token.decode("utf-8"), "user_id": user_id})
 		self.finish()
 		return 
 
@@ -86,7 +106,25 @@ class Signup(tornado.web.RequestHandler):
 	def put(self, user_id):
 		user = yield self.collection.find_one({"user_id": user_id}, projection={'_id': False})
 		if user:
-				details = self.request.arguments
+				details = { k: self.get_argument(k) for k in self.request.arguments if k not in ["state", "region"]}
+
+				state = self.request.arguments.get("state")
+				region = self.request.arguments.get("region") 
+
+				if state:
+						state =  list(map(lambda x: x.decode("utf-8"), state))
+						details["state"] = state
+				if region:
+						region = list(map(lambda x: x.decode("utf-8"), region)) 
+						details["region"] = region
+
+				if not bool(details):
+						message = {"error": True, "success": False, "message": "Nothing to update"}
+						self.write(message)
+						self.finish()
+						return 
+						
+
 				logger.info(details)
 				result = yield self.collection.update_one({'user_id': user_id}, {'$set': details})
 				logger.info(result.modified_count)
@@ -96,7 +134,6 @@ class Signup(tornado.web.RequestHandler):
 				message = {"error": True, "success": False, "message": "User doesnt exist"}
 		self.write(message)
 		self.finish()
-
 		return 
 
 

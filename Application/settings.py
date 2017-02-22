@@ -14,7 +14,8 @@ admin_collection_name = "admin"
 superadmin_collection_name = "superadmin"
 evaluator_collection_name = "evaluators"
 jwt_secret = "somesecret"
-
+app_super_admin = "nctsuperadmin"
+app_super_admin_pwd = "1234Pacific###"
 
 #uri = "mongodb://user:pass@localhost:27017/database_name"
 uri = "mongodb://%s:%s@%s:%s/%s"%(mongo_user, mongo_pwd, mongo_ip, mongo_port, "admin")
