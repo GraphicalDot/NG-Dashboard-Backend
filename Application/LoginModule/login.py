@@ -1,11 +1,7 @@
 import tornado.options
 import tornado.web
-import sys
-from os.path import dirname, abspath
-parentdir = dirname(dirname(abspath(__file__)))
-sys.path.append(parentdir)
-from settings import credential_collection_name
-from custom_logging import logger
+from SettingsModule.settings import credential_collection_name
+from LoggingModule.logging import logger
 from tornado.ioloop import IOLoop
 
 

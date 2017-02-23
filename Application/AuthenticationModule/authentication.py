@@ -1,12 +1,6 @@
 #!/usr/bin/env python3
-import sys
-from os.path import dirname, abspath
-parentdir = dirname(dirname(abspath(__file__)))
-sys.path.append(parentdir)
-from custom_logging import logger
-#import coloredlogs
-
-from settings import mongo_db, jwt_secret, app_super_admin, app_super_admin_pwd
+from LoggingModule.logging import logger
+from SettingsModule.settings import mongo_db, jwt_secret, app_super_admin, app_super_admin_pwd
 import jwt
 
 

@@ -1,13 +1,8 @@
 import tornado.options
 import tornado.web
 from tornado.escape import json_decode as TornadoJsonDecode
-
-import sys
-from os.path import dirname, abspath
-parentdir = dirname(dirname(abspath(__file__)))
-sys.path.append(parentdir)
-from settings import credential_collection_name, indian_time, jwt_secret
-from custom_logging import logger
+from SettingsModule.settings  import credential_collection_name, indian_time, jwt_secret
+from LoggingModule.logging import logger
 import time 
 import hashlib
 import jwt
@@ -167,3 +162,38 @@ class Signup(tornado.web.RequestHandler):
 		self.write(message)
 		self.finish()
 		return 
+
+
+
+
+# This class will be used when the applicant needs to do the registration, here auth is not
+# required because any applicant can change its application
+
+class SignupApplicant(tornado.web.RequestHandler):
+	def initialize(self):
+		self.db = self.settings["db"]
+		self.collection = self.db[credential_collection_name]	
+
+	@tornado.web.asynchronous
+	@tornado.gen.coroutine
+	def get(self, user_id):
+			pass
+
+
+	@tornado.web.asynchronous
+	@tornado.gen.coroutine
+	def put(self, user_id):
+			pass
+
+	@tornado.web.asynchronous
+	@tornado.gen.coroutine
+	def post(self, user_id):
+			pass
+
+	@tornado.web.asynchronous
+	@tornado.gen.coroutine
+	def delete(self, user_id):
+			pass
+
+
+
