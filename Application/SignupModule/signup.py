@@ -1,15 +1,23 @@
 import tornado.options
 import tornado.web
 from tornado.escape import json_decode as TornadoJsonDecode
-from SettingsModule.settings  import credential_collection_name, indian_time, jwt_secret
+from SettingsModule.settings  import credential_collection_name, indian_time, jwt_secret, \
+									user_types, permissions, question_collection_name,\
+									category_collection_name, sub_category_collection_name, \
+									level_collection_name
 from LoggingModule.logging import logger
 import time 
 import hashlib
 import jwt
+import json
 from AuthenticationModule.authentication import auth
 #https://emptysqua.re/blog/refactoring-tornado-coroutines/
 ## finding user from motor  yields a future object which is nothing but a promise that it will have a value in future
 ## and gen.coroutine is a perfect to resolve a future object uyntillit is resolved
+from CategoryModule.categories import CategoriesPermissions
+import codecs
+
+reader = codecs.getreader("utf-8")
 
 
 @auth
@@ -18,8 +26,13 @@ class Signup(tornado.web.RequestHandler):
 	def initialize(self):
 		self.db = self.settings["db"]
 		self.collection = self.db[credential_collection_name]	
+		self.categorie_collection = self.db[category_collection_name]
+		self.level_collection = self.db[level_collection_name]
+		self.sub_category_collection = self.db[sub_category_collection_name]
+		self.question_collection = self.db[question_collection_name]
 
 
+	
 	@tornado.web.asynchronous
 	@tornado.gen.coroutine
 	def  post(self):
@@ -29,29 +42,49 @@ class Signup(tornado.web.RequestHandler):
 			user_type: admin, accessor, evaluator, superadmin
 			username: 
 			password: 
-			newpassword:
-		"""
-		user_type = self.get_argument("user_type", None)
-		full_name = self.get_argument("full_name", None)
-		email = self.get_argument("email", None)
-		username = self.get_argument("username", None)
-		password = self.get_argument("password", None)
-		state = self.request.arguments.get("state") 
-		region = self.request.arguments.get("region") 
-		profile_pic = self.get_argument("profile_pic", None)
 
+		When creating the admin, The superadmin can grant access to the admin user whether he can 
+		crud category, subcategory, level or question
+		if all permissions are aloowed on all four, then he is super: True
+		else:
+			super admin can select multiple categories, multiple sub categories, and levels
+			from the dropdpwn, now instead of super, following ids will be pushed to the 
+			dict permissions for corresponding category_permissions, sub_category_permissions
+			or level_permissions, all these also have crud operations ids in them 
+
+			Also to be safe, all the categories, sub categories and levels have list of user ids 
+			pushed into crud operations
+
+		"""
+		post_arguments = json.loads(self.request.body.decode("utf-8"))
+		user_type = post_arguments.get("user_type")
+		full_name = post_arguments.get("full_name", None)
+		email = post_arguments.get("email", None)
+		username = post_arguments.get("username", None)
+		password = post_arguments.get("password", None)
+		state = post_arguments.get("state") 
+		region = post_arguments.get("region") 
+		profile_pic = post_arguments.get("profile_pic", None)
+		##Permissions
+		##For the user other 
+		category_permissions =  post_arguments.get("category_permissions", None)
+
+
+
+		##subcategory permissions
+		sub_category_permissions =  self.get_argument("sub_category_permissons", None)
+
+		##levels permissions
+		level_permissions =  self.get_argument("level_permissons", None)
+
+		##question permissions
+		question_permissions =  self.get_argument("question_permissons", None)
 
 		
-		if state:
-			state =  list(map(lambda x: x.decode("utf-8"), state))
-		logger.info(state)
-
-		if region:
-			region = list(map(lambda x: x.decode("utf-8"), region)) 
-
 		logger.info("user_type=%s, full_name=%s, user_email=%s, username=%s, \
-			password=%s, state=%s, region=%s"%(user_type, full_name, email,\
-			  username, password, state, region))
+			password=%s, state=%s, region=%s, category_permissions=%s"%(user_type, full_name, email,\
+			  username, password, state, region, category_permissions))
+
 
 		
 		#user = yield db[credentials].find_one({'user_type': user_type, "username": username, "password": password})
@@ -63,7 +96,8 @@ class Signup(tornado.web.RequestHandler):
 			if None in [user_type, username, password, email, state, region, full_name]:
 				raise Exception("Fields shouldnt be empty")
 
-			if user_type not in ["accessor", "admin", "evaluator"]:
+			if user_type not in user_types:
+
 				raise Exception("user_type is not allowed")
 
 
@@ -74,11 +108,19 @@ class Signup(tornado.web.RequestHandler):
 				raise Exception("This email id have already been registered with us")
 
 			user_id = hashlib.sha1(email.encode("utf-8")).hexdigest()
+			password = hashlib.sha1(password.encode("utf-8")).hexdigest()
+
+			if category_permissions:
+					a = CategoriesPermissions()
+					yield a.update_permissions(self.db, user_id, category_permissions)
 			user = yield self.collection.insert_one({'user_type': user_type, "username": username,\
 							 "password": password, "region": region, "state": state,\
 							  "email": email, "profile_pic": profile_pic, "utc_epoch": time.time(), "indian_time": indian_time(), "user_id": user_id })
-			
+
 			logger.info("User added at %s with user_id %s"%(indian_time(), user_id))
+			
+			
+			
 		
 			#TODO: will be used to send email to the user
 			##executor.submit(task, datetime.datetime.now())
@@ -89,6 +131,7 @@ class Signup(tornado.web.RequestHandler):
 				return 
 
 		##TODO : implement JWT tokens
+		logger.info("This is the password %s"%password)
 		token =  jwt.encode({'username': username, "password": password, "email": email, "user_type": user_type}, 'secret', algorithm='HS256')
 		self.write({"error": False, "success": True, "token": token.decode("utf-8"), "user_id": user_id})
 		self.finish()

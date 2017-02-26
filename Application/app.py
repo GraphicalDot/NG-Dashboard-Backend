@@ -24,6 +24,8 @@ define("port", default=app_port, help="run on the given port", type=int)
 from LoginModule.login import Login
 from SignupModule.signup import Signup, SignupApplicant
 from SettingsModule.settings import mongo_db
+from CategoryModule.categories import Category, Categories
+
 app_urls = [
 			(r"/login", Login),
 			(r"/signup$", Signup),
@@ -33,6 +35,11 @@ app_urls = [
 			(r"/signupapplicant$", SignupApplicant),
 			(r"/signupapplicant/(\d+$)", SignupApplicant),
 			(r"/signupapplicant/([a-zA-Z0-9_.-]*$)", SignupApplicant),
+			
+			(r"/category$", Category),
+			(r"/categories$", Categories),
+			(r"/category/([a-zA-Z0-9_.-]*$)", Category),
+
 			
 			]
 

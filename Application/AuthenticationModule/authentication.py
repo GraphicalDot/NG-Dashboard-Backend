@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 from LoggingModule.logging import logger
-from SettingsModule.settings import mongo_db, jwt_secret, app_super_admin, app_super_admin_pwd
+from SettingsModule.settings import mongo_db, jwt_secret, app_super_admin, app_super_admin_pwd, credentials_collection
 import jwt
 
 
@@ -17,6 +17,14 @@ def _checkAuth(user_type, username, password):
     			return True
     		else:
     			return False
+
+    else:
+    		user = yield credentails_collection.find_one({'user_type': user_type, "username": username, "password": password})
+    		if user:
+    			return True
+    		else: 
+    			return False
+
     return {
         'login': 'okay',
         'password': 'okay',
@@ -34,7 +42,7 @@ def auth(handler_class):
 								handler._transforms = []
 								handler.finish()
 								return False
-						print ("executing")
+						
 						try:
 								auth_decoded = jwt.decode(auth_header, jwt_secret, algorithms=['HS256']) 
 						except Exception as e:

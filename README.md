@@ -32,8 +32,12 @@ stop mongo instance
 start again 
 sudo mongo -u "application" -p "1234Pacific###" --authenticationDatabase "admin"
 
+to coonect with pymongo
 
 
+uri = "mongodb://%s:%s@%s/?authSource=%s"%(mongo_user, mongo_pwd, "localhost",
+"admin")
+client = pymongo.MongoClient(uri)
 
 
 
