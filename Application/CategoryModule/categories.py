@@ -1,6 +1,7 @@
 
 
 
+
 #!/usr/bin/env python3
 from SettingsModule.settings import question_collection_name, default_document_limit,\
 									indian_time, permissions, category_collection_name
@@ -13,6 +14,67 @@ from LoggingModule.logging import logger
 import hashlib
 import json
 import traceback
+
+@coroutine
+def check_if_super(category_name, collection, user_id, rest_parameter, category_id=None):
+	"""
+	check if a user have the super user permission in the collection for the specifid category
+	i.e his/her user_id is present in the "super_permissions", 
+	if True: 
+			Then this user_id can create more entries into this collection or any children of this category, 
+	this method also checks if this user is superadmin for this application, 
+	if True:
+		he/she can do anything with this collection
+	"""
+	if user_id == "superadmin":
+		logger.info("The user is superadmin for category [%s]"%category_id)
+		return True
+
+	##check if user_id has access to all this categories in this module
+	user_permission = yield collection.find_one({"name": "super_permissions", "all": {"$in": [user_id]}}, projection={"_id": True})
+	if user_permission:
+		logger.info("The user_id [%s] has superadmin permissions for category=[%s]"%(user_id, category_id))
+		return True
+
+	else:
+			permission = yield if_module_permission(category_name, collection, user_id, rest_parameter, category_id)
+			if permission:
+				logger.info("Some fucks happened and its returning True")
+				return True
+			else:
+
+				logger.info("Some fucks happened")
+				raise Exception("Insufficient permission for the user %s"%user_id)
+				
+	return 
+
+
+@coroutine
+def if_module_permission(category_name, collection, user_id, rest_parameter, category_id):
+	"""
+	This method checks if the user_id has permission for the specific category, sub category etc 
+	in a particular module 
+
+	the permission can be of four types, create, get, delete , put
+	create is the permission if a user can create child category of this partiular category
+	Args:
+		rest_parameter: "get", "put", "create", "delete"
+
+	"""
+	user_permission = yield collection.find_one({"category_id": category_id}, \
+		projection={"_id": False, user_id: True})
+	logger.info(user_permission)
+
+	try:
+		if user_permission[user_id][rest_parameter]:
+			logger.info("The user_id [%s] has [%s] permissions for this category [%s]"%(user_id, rest_parameter, category_id))
+			return True
+	except Exception:
+			logger.info("The user_id [%s] doesnt have [%s] permissions for this category [%s]"%(user_id, rest_parameter, category_id))
+			return False
+
+	return 
+
 
 @auth
 class Category(tornado.web.RequestHandler):
@@ -39,7 +101,8 @@ class Category(tornado.web.RequestHandler):
 			collection
 			If an existing  category is to be edited then put request must be used
 			
-
+			#TODO: check if a user has create permission for this category, which implies that this user_id
+					has create permission for its parent_id
 			"""
 			#permissions = {"create": False, "delete": False, "edit": False, "get": False}
 			post_arguments = json.loads(self.request.body.decode("utf-8"))
@@ -52,11 +115,12 @@ class Category(tornado.web.RequestHandler):
 
 			logger.info(post_arguments)
 			try:
-					if not user_permission:
-						if user_id == "superadmin":
-							pass
-						else:
-							raise Exception("Insufficient permission for this user")
+					# if not user_permission:
+					# 	if user_id == "superadmin":
+					# 		pass
+					# 	else:
+					# 		raise Exception("Insufficient permission for this user")
+					yield check_if_super(category_name, self.collection, user_id, "post", None)
 
 					category = yield self.collection.find_one({"category_name": category_name})
 					if category:
@@ -98,21 +162,24 @@ class Category(tornado.web.RequestHandler):
 	def get(self, category_id):
 			get_arguments = json.loads(self.request.body.decode("utf-8"))
 			user_id = get_arguments.get("user_id", None) ##who created this category
-			user_permission = yield self.collection.find_one({"name": "super_permissions", "all": {"$in": [user_id]}}, projection={"_id": True})
+			#user_permission = yield self.collection.find_one({"name": "super_permissions", "all": {"$in": [user_id]}}, projection={"_id": True})
 			try:
-					if not user_permission:
-						if user_id == "superadmin":
-							pass
-						else:
-							user_permission = yield self.collection.find_one({"category_id": category_id},\
-							 projection={"_id": False, user_id: True})
-							logger.info(user_permission)
-							if user_permission[user_id]["get"]:
-									category = yield self.collection.find_one({"category_id": category_id}, projection={"_id": False})
-							else:
-								raise Exception("Insufficient permission for this user")
+				yield check_if_super(None, self.collection, user_id, "get", category_id)
+
+				# check_if_super(categroy_id, self.collection, user_id, "get")
+				# 	if not user_permission:
+				# 		if user_id == "superadmin":
+				# 			pass
+				# 		else:
+				# 			user_permission = yield self.collection.find_one({"category_id": category_id},\
+				# 			 projection={"_id": False, user_id: True})
+				# 			logger.info(user_permission)
+				# 			if user_permission[user_id]["get"]:
+				# 					category = yield self.collection.find_one({"category_id": category_id}, projection={"_id": False})
+				# 			else:
+				# 				raise Exception("Insufficient permission for this user")
+				category = yield self.collection.find_one({"category_id": category_id}, projection={"_id": False})
 			except Exception as e:
-				import traceback
 				print (traceback.format_exc())
 				logger.error(e)
 				self.write({"error": True, "success": False, "message": e.__str__()})
@@ -138,17 +205,19 @@ class Category(tornado.web.RequestHandler):
 			user_permission = yield self.collection.find_one({"name": "super_permissions", "all": {"$in": [user_id]}}, projection={"_id": True})
 			permissions = post_arguments.get("permissions", None)
 			try:
-					if not user_permission:
-						if user_id == "superadmin":
-							pass
-						else:
-							user_permission = yield self.collection.find_one({"category_id": category_id},\
-							 projection={"_id": False, user_id: True})
-							logger.info(user_permission)
-							if user_permission[user_id]["update"]:
-									pass
-							else:
-								raise Exception("Insufficient permission for this user")
+					yield check_if_super(None, self.collection, user_id, "put", category_id)
+					
+					# if not user_permission:
+					# 	if user_id == "superadmin":
+					# 		pass
+					# 	else:
+					# 		user_permission = yield self.collection.find_one({"category_id": category_id},\
+					# 		 projection={"_id": False, user_id: True})
+					# 		logger.info(user_permission)
+					# 		if user_permission[user_id]["update"]:
+					# 				pass
+					# 		else:
+					# 			raise Exception("Insufficient permission for this user")
 
 					if permissions:
 						logger.info(permissions)
@@ -162,7 +231,6 @@ class Category(tornado.web.RequestHandler):
 						"score": score}}, upsert=False)					
 
 			except Exception as e:
-				import traceback
 				print (traceback.format_exc())
 				logger.error(e)
 				self.write({"error": True, "success": False, "message": e.__str__()})
@@ -185,20 +253,21 @@ class Category(tornado.web.RequestHandler):
 			user_id = post_arguments.get("user_id", None) ##who created this category
 			user_permission = yield self.collection.find_one({"name": "super_permissions", "all": {"$in": [user_id]}}, projection={"_id": True})
 			try:
-					if not user_permission:
-						if user_id == "superadmin":
-							pass
-						else:
-							user_permission = yield self.collection.find_one({"category_id": category_id},\
-							 projection={"_id": False, user_id: True})
-							logger.info(user_permission)
-							if user_permission[user_id]["delete"]:
-									yield self.collection.delete_one({"category_id": category_id})
+					yield check_if_super(None, self.collection, user_id, "delete", category_id)
+				
+					# if not user_permission:
+					# 	if user_id == "superadmin":
+					# 		pass
+					# 	else:
+					# 		user_permission = yield self.collection.find_one({"category_id": category_id},\
+					# 		 projection={"_id": False, user_id: True})
+					# 		logger.info(user_permission)
+					# 		if user_permission[user_id]["delete"]:
+					# 				yield self.collection.delete_one({"category_id": category_id})
 									
-							else:
-								raise Exception("Insufficient permission for this user")
+					# 		else:
+					# 			raise Exception("Insufficient permission for this user")
 			except Exception as e:
-				import traceback
 				print (traceback.format_exc())
 				logger.error(e)
 				self.write({"error": True, "success": False, "message": e.__str__()})

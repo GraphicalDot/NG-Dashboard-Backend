@@ -91,9 +91,11 @@ pprint.pprint(r.json())
 
 
 print ("\n\n")
-pprint.pprint("The user id %s doesnt have permission to create category" %(response_one["user_id"]))
+
+pprint.pprint(category_collection.find_one())
+pprint.pprint("FROM TEST: The user id %s doesnt have permission to create category" %(response_one["user_id"]))
 category_data = {"category_name": "test category one",
-				 "text_description": "This is a text description for test categiry one", 
+				 "text_description": "This is a text description for test categry one", 
 				 "score": 20,
 				 "user_id": response_one["user_id"]
 				 }
