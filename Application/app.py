@@ -22,7 +22,7 @@ define("port", default=app_port, help="run on the given port", type=int)
 
 #http://steelkiwi.com/blog/jwt-authorization-python-part-1-practise/
 from LoginModule.login import Login
-from SignupModule.signup import Signup, SignupApplicant
+from SignupModule.signup import Signup, SignupApplicant, Users
 from SettingsModule.settings import mongo_db
 from CategoryModule.categories import Category, Categories
 
@@ -31,6 +31,7 @@ app_urls = [
 			(r"/signup$", Signup),
 			(r"/signup/(\d+$)", Signup),
 			(r"/signup/([a-zA-Z0-9_.-]*$)", Signup),
+			(r"/users", Users),
 
 			(r"/signupapplicant$", SignupApplicant),
 			(r"/signupapplicant/(\d+$)", SignupApplicant),

@@ -1,6 +1,6 @@
 import tornado.options
 import tornado.web
-from SettingsModule.settings import credential_collection_name
+from SettingsModule.settings import user_collection_name, jwt_secret
 from LoggingModule.logging import logger
 from tornado.ioloop import IOLoop
 import hashlib
@@ -14,7 +14,7 @@ class Login(tornado.web.RequestHandler):
 
 	def initialize(self):
 			self.db = self.settings["db"]
-			self.collection = self.db[credential_collection_name]
+			self.collection = self.db[user_collection_name]
 
 	@tornado.web.asynchronous
 	@tornado.gen.coroutine
@@ -50,8 +50,8 @@ class Login(tornado.web.RequestHandler):
 			user = yield self.collection.find_one({'user_type': user_type, "username": username, "password": password})
 			if not user:
 				raise Exception("user doesnt exist")
-			token =  jwt.encode({'username': user["username"], "password": user["password"], "email": user["email"],\
-						 "user_type": user["user_type"]}, 'secret', algorithm='HS256')
+			token =  jwt.encode({'username': user["username"], "password": user["password"],\
+						 "user_type": user["user_type"]}, jwt_secret, algorithm='HS256')
 			
 		
 		except Exception as e:

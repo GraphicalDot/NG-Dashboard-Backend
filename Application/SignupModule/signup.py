@@ -1,10 +1,10 @@
 import tornado.options
 import tornado.web
 from tornado.escape import json_decode as TornadoJsonDecode
-from SettingsModule.settings  import credential_collection_name, indian_time, jwt_secret, \
+from SettingsModule.settings  import user_collection_name, indian_time, jwt_secret, \
 									user_types, permissions, question_collection_name,\
 									category_collection_name, sub_category_collection_name, \
-									level_collection_name
+									level_collection_name, default_document_limit
 from LoggingModule.logging import logger
 import time 
 import hashlib
@@ -21,11 +21,61 @@ reader = codecs.getreader("utf-8")
 
 
 @auth
+class Users(tornado.web.RequestHandler):
+
+	def initialize(self):
+		self.db = self.settings["db"]
+		self.collection = self.db[user_collection_name]	
+
+
+	
+	@tornado.web.asynchronous
+	@tornado.gen.coroutine
+	def  post(self):
+		post_arguments = json.loads(self.request.body.decode("utf-8"))
+		user_id = post_arguments.get("user_id") 
+		skip = post_arguments.get("skip", 0) 
+		limit = post_arguments.get("limit", default_document_limit) 
+
+		try:
+			assert isinstance(skip, int), "skip must be an int"
+			assert isinstance(limit, int), "limit must be an int"
+			user = yield self.collection.find_one({"user_id": user_id})
+
+			if not user:
+					raise Exception("User doesnt exist, Please signup first")
+
+			if user["user_type"] == "superadmin":
+					##give away alll the users
+					users = yield self.collection.find({"parent_user_id": {"$ne": user_id}}, projection={"_id": False}).\
+					skip(skip).sort([('indian_time', -1)]).to_list(length=limit)
+					logger.info(users)
+
+			if user["user_type"] == "admin":
+					logger.info("Users request is from admin user")
+					users = yield self.collection.find({"parent_user_id": user_id}, projection={"_id": False}).skip(skip)\
+					.sort([('indian_time', -1)]).to_list(length=limit)
+					logger.info(users)
+
+		except Exception as e:
+				logger.error(e)
+				self.write({"error": True, "success": False, "token": None, "message": e.__str__()})
+				self.finish()
+				return 
+
+		##TODO : implement JWT tokens
+		self.write({"error": False, "success": True, "users": users})
+		self.finish()
+		return 
+
+
+
+@auth
 class Signup(tornado.web.RequestHandler):
 
 	def initialize(self):
 		self.db = self.settings["db"]
-		self.collection = self.db[credential_collection_name]	
+		self.collection = self.db[user_collection_name]	
 		self.categorie_collection = self.db[category_collection_name]
 		self.level_collection = self.db[level_collection_name]
 		self.sub_category_collection = self.db[sub_category_collection_name]
@@ -62,28 +112,18 @@ class Signup(tornado.web.RequestHandler):
 		email = post_arguments.get("email", None)
 		username = post_arguments.get("username", None)
 		password = post_arguments.get("password", None)
-		state = post_arguments.get("state") 
-		region = post_arguments.get("region") 
+		state = post_arguments.get("state", None) 
+		region = post_arguments.get("region", None) 
 		profile_pic = post_arguments.get("profile_pic", None)
 		##Permissions
 		##For the user other 
-		category_permissions =  post_arguments.get("category_permissions", None)
-
-
-
-		##subcategory permissions
-		sub_category_permissions =  self.get_argument("sub_category_permissons", None)
-
-		##levels permissions
-		level_permissions =  self.get_argument("level_permissons", None)
-
-		##question permissions
-		question_permissions =  self.get_argument("question_permissons", None)
+		is_superadmin = post_arguments.get("is_superadmin", False) #handle this
+		parent_user_id = post_arguments.get("parent_user_id", None) ## Which implies a superadmin
 
 		
 		logger.info("user_type=%s, full_name=%s, user_email=%s, username=%s, \
-			password=%s, state=%s, region=%s, category_permissions=%s"%(user_type, full_name, email,\
-			  username, password, state, region, category_permissions))
+			password=%s, state=%s, region=%s,parent_user_id=%s, is_superadmin=%s "%(user_type, full_name, email,\
+			  username, password, state, region, parent_user_id, is_superadmin))
 
 
 		
@@ -97,8 +137,20 @@ class Signup(tornado.web.RequestHandler):
 				raise Exception("Fields shouldnt be empty")
 
 			if user_type not in user_types:
-
 				raise Exception("user_type is not allowed")
+
+
+			parent =  yield self.collection.find_one({"user_id": parent_user_id})
+			logger.info(parent)
+			if not parent:
+				raise Exception("Parent id doesnt exist, cant create this user")
+
+			if is_superadmin and parent["user_type"] != "superadmin":
+				raise Exception("Only superadmin can create superadmin")
+
+			if parent["user_type"] == "admin" and user_type == "admin":
+				raise Exception("Only superadmin can create admin, admin cant create admin ")
+
 
 
 
@@ -110,12 +162,18 @@ class Signup(tornado.web.RequestHandler):
 			user_id = hashlib.sha1(email.encode("utf-8")).hexdigest()
 			password = hashlib.sha1(password.encode("utf-8")).hexdigest()
 
+
+			"""
 			if category_permissions:
 					a = CategoriesPermissions()
 					yield a.update_permissions(self.db, user_id, category_permissions)
+			"""
 			user = yield self.collection.insert_one({'user_type': user_type, "username": username,\
 							 "password": password, "region": region, "state": state,\
-							  "email": email, "profile_pic": profile_pic, "utc_epoch": time.time(), "indian_time": indian_time(), "user_id": user_id })
+
+
+							  "email": email, "profile_pic": profile_pic, "utc_epoch": time.time(), "indian_time": indian_time(), "user_id": user_id, 
+							  "is_superadmin": is_superadmin, "parent_user_id": parent_user_id })
 
 			logger.info("User added at %s with user_id %s"%(indian_time(), user_id))
 			
@@ -132,7 +190,7 @@ class Signup(tornado.web.RequestHandler):
 
 		##TODO : implement JWT tokens
 		logger.info("This is the password %s"%password)
-		token =  jwt.encode({'username': username, "password": password, "email": email, "user_type": user_type}, 'secret', algorithm='HS256')
+		token =  jwt.encode({'username': username, "password": password, "user_type": user_type}, jwt_secret, algorithm='HS256')
 		self.write({"error": False, "success": True, "token": token.decode("utf-8"), "user_id": user_id})
 		self.finish()
 		return 
@@ -185,6 +243,7 @@ class Signup(tornado.web.RequestHandler):
 				message = {"error": False, "success": True, "message": "User has been deleted"}
 		else:
 				message = {"error": True, "success": False, "message": "User doesnt exist"}
+
 
 		self.write(message)
 		self.finish()

@@ -9,23 +9,23 @@ mongo_pwd = "1234Pacific###"
 mongo_ip = "localhost"
 mongo_port = 27017
 mongo_db_name = "tiapplication"
-credential_collection_name = "credentials"
+user_collection_name = "users"
 accessor_collection_name  = "accessors"
-admin_collection_name = "admins"
 superadmin_collection_name = "superadmin"
 evaluator_collection_name = "evaluators"
 question_collection_name = "questions"
 category_collection_name = "categories"
 sub_category_collection_name = "subcategories"
 level_collection_name = "levels"
-
+notification_collection_name = "notifications"
 
 jwt_secret = "somesecret"
 app_super_admin = "nctsuperadmin"
 app_super_admin_pwd = "1234Pacific###"
+app_super_admin_user_id = "nctsuperadmin###"
 
 
-user_types = ["accessor", "question_uploader", "admin", "evaluator"]
+user_types = ["accessor", "question_uploader", "admin", "evaluator", "superadmin"]
 ##change this if you want all get requests for list to return more than 10 results
 default_document_limit = 10
 
