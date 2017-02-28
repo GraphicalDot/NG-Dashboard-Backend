@@ -135,7 +135,7 @@ class CategoryPermissions(tornado.web.RequestHandler):
 			self.write({"error": True, "success": False, "message": e.__str__()})
 			self.finish()
 			return 
-		self.write({"error": False, "success": True, "category_id": category_id, "messege": "Permissions updated"})
+		self.write({"error": False, "success": True, "category_id": category_id, "message": "Permissions updated"})
 		self.finish()
 		return 
 

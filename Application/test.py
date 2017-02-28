@@ -26,7 +26,8 @@ client.drop_database("tiapplication")
 db = client["tiapplication"]
 
 category_collection = db[category_collection_name]
-
+users_collection = db[user_collection_name]
+sub_category_collection = db[sub_category_collection_name]
 
 ##adding user_id=="superadmin" to categiry collection
 #db[user_collection_name].update_one({"name": "super_permissions"},  {"$addToSet": { "all": "superadmin"}}, upsert=True)
@@ -249,19 +250,7 @@ def create_category_by_superadmin(super_admin_user_id):
 	cprint(r.json(), "blue")
 	return 
 
-def create_category_by_superadmin(super_admin_user_id):
-	print ("\n\n")
-	cprint("Trying to create category by superadmin", "green")
 
-	category_data = {"category_name": "test category one",
-				 "text_description": "This is a text description for test categry one", 
-				 "score": 20,
-				 "user_id": super_admin_user_id
-				 }
-	r = requests.post("http://localhost:8000/category", data=json.dumps(category_data), headers=headers)
-	cprint(r.json(), "blue")
-
-	return 
 
 
 
@@ -345,8 +334,10 @@ def	adding_permissions_by_admin_one_for_admin_two(admin_one_user_id, admin_two_u
 	print ("\n\n")
 	cprint("Till now category_id [%s] which was created by admin one [%s] doiesnt have permissions\
 	 for admin two[%s]"%(category_id_by_admin_one, admin_one_user_id, admin_two_user_id), "green")
+	
+	permission_object = {"user_id": admin_two_user_id , "create": True, "delete": False, "get": True, "put": True}
 	data_object = {"category_id": category_id_by_admin_one, "user_id": admin_one_user_id, \
-	"permissions": [{"user_id": admin_two_user_id , "create": True, "delete": False, "get": True, "put": True}]}
+	"permissions": [permission_object]}
 
 	r = requests.post("http://localhost:8000/categorypermissions", data=json.dumps(data_object),\
 	 headers={"Authorization": admin_two_token})
@@ -358,12 +349,62 @@ def	adding_permissions_by_admin_one_for_admin_two(admin_one_user_id, admin_two_u
 	else:
 			cprint("Test Passed", "green", "on_white")
 	"""	
-	if r.json()['message'] != 'Insufficient permission for the user %s'%admin_two_user_id:
+	if r.json()['message'] != 'Permissions updated':
 		cprint("Test Failed", "red", "on_white")
 	else:
 			cprint("Test Passed", "green", "on_white")
+
+
+	cprint("Checking permissions with mongoDB whether the persmissions are updated or not", "green")
+	category = category_collection.find_one({"category_id": category_id_by_admin_one})
+	permission_object.pop("user_id")
+	
+	if category[admin_two_user_id] == permission_object:
+			cprint("Test Passed", "green", "on_white")
+
+
 	return 
 
+##Now admin_one created a category, Then admin one added permissions for admin_two on this category
+
+
+def	create_sub_category_by_admin_two(admin_two_user_id, admin_two_token, category_id):
+	print ("\n\n")
+	cprint("Trying to create sub category by admin Two", "green")
+	cprint("This sub category must be created as admin Two [%s] has create permissions on %s"%(admin_two_user_id, category_id),  "green")
+
+	category_data = {"sub_category_name": "subcategory_one_admin_two",
+				 "text_description": "Description for subcategory_one_admin_two", 
+				 "score": 30,
+				 "user_id": admin_two_user_id,
+				 "category_id": category_id
+				 }
+	r = requests.post("http://localhost:8000/subcategory", data=json.dumps(category_data), headers={"Authorization": question_uploader_token})
+	cprint( "\t\t%s"%r.json(), "blue")
+
+	sub_category_id = r.json()["sub_category_id"]
+	if r.json()['category_id'] != category_id:
+		cprint("\t\tTest Failed", "red", "on_white")
+	else:
+			cprint("\t\tTest Passed", "green", "on_white")
+	
+	cprint("\t\tChecking mongodb Entry for this new update in subcategory collection")
+	if sub_category_collection.find_one({"sub_category_id": sub_category_id})[admin_two_user_id] == \
+													{"create": True, "get": True, "delete": True, "update": True}:
+			cprint("\t\tTest Passed", "green", "on_white")
+	else:
+			cprint("\t\tTest Passed", "green", "on_white")
+	
+	cprint("\t\t Checking user[%s] in user_collection for subcategory[%s] permission"%(admin_two_user_id, sub_category_id))
+	if users_collection.find_one({"user_id": admin_two_user_id})["permissions"]["sub_category"][sub_category_id] ==\
+					 {"create": True, "get": True, "delete": True, "update": True}:
+			cprint("\t\tTest Passed", "green", "on_white")
+	else:
+			cprint("\t\tTest Passed", "green", "on_white")
+					 
+
+
+	return 
 
 
 
@@ -379,11 +420,15 @@ if __name__ == "__main__":
 
 	(question_uploader_id, question_uploader_token) = create_user_first(admin_one_user_id, admin_one_token)
 	create_user_second(admin_one_user_id, admin_one_token)
-	"""
 	for user in db[user_collection_name].find():
 		pprint.pprint (user)
 		print("\n\n")
-	"""
+
+	for user in db[category_collection_name].find():
+		pprint.pprint (user)
+		print("\n\n")
+
+
 	users_by_admin(admin_one_user_id, admin_one_token)
 	create_category_by_superadmin(super_admin_user_id)
 	create_category_by_question_uploader(question_uploader_id, question_uploader_token)
@@ -391,6 +436,7 @@ if __name__ == "__main__":
 	get_category_by_admin_two(admin_one_user_id, admin_one_token, category_id_by_admin_one)
 	change_permissions_by_admin_two(admin_two_user_id, admin_two_token, category_id_by_admin_one)
 	adding_permissions_by_admin_one_for_admin_two(admin_one_user_id, admin_two_user_id, admin_one_token, category_id_by_admin_one)
+	create_sub_category_by_admin_two(admin_two_user_id, admin_two_token, category_id_by_admin_one)
 
 
 """
