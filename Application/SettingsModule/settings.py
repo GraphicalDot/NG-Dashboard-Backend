@@ -16,6 +16,8 @@ evaluator_collection_name = "evaluators"
 question_collection_name = "questions"
 category_collection_name = "categories"
 sub_category_collection_name = "subcategories"
+
+sub_criteria_collection_name = "subcriteria"
 level_collection_name = "levels"
 notification_collection_name = "notifications"
 

@@ -26,6 +26,7 @@ from SignupModule.signup import Signup, SignupApplicant, Users
 from SettingsModule.settings import mongo_db
 from CategoryModule.categories import Category, Categories, CategoryPermissions
 from SubCategoryModule.subcategories import SubCategory,SubCategories, SubCategoryPermissions
+from SubCriteriaModule.subcriteria import SubCriteria, SubCriterions, SubCriteriaPermissions
 
 app_urls = [
 			(r"/login", Login),
@@ -50,6 +51,10 @@ app_urls = [
 
 
 
+            (r"/subcriteria$", SubCriteria),
+            (r"/subcriterion$", SubCriterions),
+            (r"/subcriteria/([a-zA-Z0-9_.-]*$)", SubCriteria),
+            (r"/subcategorypermissions$", SubCriteriaPermissions),
 			
 			]
 
