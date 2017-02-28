@@ -235,6 +235,138 @@ def users_by_admin(admin_one_user_id, Authorization):
 	return 
 
 
+
+def create_category_by_superadmin(super_admin_user_id):
+	print ("\n\n")
+	cprint("Trying to create category by superadmin", "green")
+
+	category_data = {"category_name": "test category one",
+				 "text_description": "This is a text description for test categry one", 
+				 "score": 20,
+				 "user_id": super_admin_user_id
+				 }
+	r = requests.post("http://localhost:8000/category", data=json.dumps(category_data), headers=headers)
+	cprint(r.json(), "blue")
+	return 
+
+def create_category_by_superadmin(super_admin_user_id):
+	print ("\n\n")
+	cprint("Trying to create category by superadmin", "green")
+
+	category_data = {"category_name": "test category one",
+				 "text_description": "This is a text description for test categry one", 
+				 "score": 20,
+				 "user_id": super_admin_user_id
+				 }
+	r = requests.post("http://localhost:8000/category", data=json.dumps(category_data), headers=headers)
+	cprint(r.json(), "blue")
+
+	return 
+
+
+
+def create_category_by_admin_one(admin_one_user_id, admin_one_token):
+	print ("\n\n")
+	cprint("Trying to create category by admin one", "green")
+
+	category_data = {"category_name": "test category admin one",
+				 "text_description": "This is a text description for test categry one", 
+				 "score": 20,
+				 "user_id": admin_one_user_id
+				 }
+	r = requests.post("http://localhost:8000/category", data=json.dumps(category_data), headers={"Authorization": admin_one_token})
+	cprint(r.json(), "blue")
+	return  r.json()["category_id"]
+
+
+
+def	create_category_by_question_uploader(question_uploader_id, question_uploader_token):
+	print ("\n\n")
+	cprint("Trying to create category by question uploader", "green")
+
+	category_data = {"category_name": "test category by question uploader",
+				 "text_description": "This is a text description for test categry one", 
+				 "score": 20,
+				 "user_id": question_uploader_id
+				 }
+	r = requests.post("http://localhost:8000/category", data=json.dumps(category_data), headers={"Authorization": question_uploader_token})
+	cprint(r.json(), "blue")
+	if r.json()['message'] != 'Insufficient permission for the user %s'%question_uploader_id:
+		cprint("Test Failed", "red", "on_white")
+	else:
+			cprint("Test Passed", "green", "on_white")
+	return 
+	
+
+def	get_category_by_admin_two(admin_two_user_id, admin_two_token, category_id_by_admin_one):
+	print ("\n\n")
+	cprint("Trying to get category by admin two created by admin onw", "green")
+
+	r = requests.get("http://localhost:8000/category/%s"%category_id_by_admin_one, data=json.dumps({"user_id": admin_two_user_id}),\
+	 headers={"Authorization": admin_two_token})
+	cprint(r.json(), "blue")
+	"""
+	if r.json()['message'] != 'Insufficient permission for the user %s'%question_uploader_id:
+		cprint("Test Failed", "red", "on_white")
+	else:
+			cprint("Test Passed", "green", "on_white")
+	"""	
+	if r.json()['message'] != 'Insufficient permission for the user %s'%admin_two_user_id:
+		cprint("Test Failed", "red", "on_white")
+	else:
+			cprint("Test Passed", "green", "on_white")
+	return 
+	
+
+def	change_permissions_by_admin_two(admin_two_user_id, admin_two_token, category_id_by_admin_one):
+	print ("\n\n")
+	cprint("Trying to change permissions  by admin two of category created by admin one", "green")
+	data_object = {"category_id": category_id_by_admin_one, "user_id": admin_two_user_id, "permissions": []}
+
+	r = requests.post("http://localhost:8000/categorypermissions", data=json.dumps(data_object),\
+	 headers={"Authorization": admin_two_token})
+
+	print (r.text)
+	"""
+	if r.json()['message'] != 'Insufficient permission for the user %s'%question_uploader_id:
+		cprint("Test Failed", "red", "on_white")
+	else:
+			cprint("Test Passed", "green", "on_white")
+	if r.json()['message'] != 'Insufficient permission for the user %s'%admin_two_user_id:
+		cprint("Test Failed", "red", "on_white")
+	else:
+			cprint("Test Passed", "green", "on_white")
+	return 
+	"""	
+
+
+
+def	adding_permissions_by_admin_one_for_admin_two(admin_one_user_id, admin_two_user_id, admin_one_token, category_id_by_admin_one):
+	print ("\n\n")
+	cprint("Till now category_id [%s] which was created by admin one [%s] doiesnt have permissions\
+	 for admin two[%s]"%(category_id_by_admin_one, admin_one_user_id, admin_two_user_id), "green")
+	data_object = {"category_id": category_id_by_admin_one, "user_id": admin_one_user_id, \
+	"permissions": [{"user_id": admin_two_user_id , "create": True, "delete": False, "get": True, "put": True}]}
+
+	r = requests.post("http://localhost:8000/categorypermissions", data=json.dumps(data_object),\
+	 headers={"Authorization": admin_two_token})
+
+	print (r.text)
+	"""
+	if r.json()['message'] != 'Insufficient permission for the user %s'%question_uploader_id:
+		cprint("Test Failed", "red", "on_white")
+	else:
+			cprint("Test Passed", "green", "on_white")
+	"""	
+	if r.json()['message'] != 'Insufficient permission for the user %s'%admin_two_user_id:
+		cprint("Test Failed", "red", "on_white")
+	else:
+			cprint("Test Passed", "green", "on_white")
+	return 
+
+
+
+
 if __name__ == "__main__":
 	insert_super_admin()
 	(admin_one_user_id, admin_one_token) = create_admin_one()
@@ -245,13 +377,20 @@ if __name__ == "__main__":
 	create_super_admin_by_admin(admin_one_user_id,  admin_one_token)
 	create_admin_three_by_admin(admin_two_user_id, admin_two_token)
 
-	create_user_first(admin_one_user_id, admin_one_token)
+	(question_uploader_id, question_uploader_token) = create_user_first(admin_one_user_id, admin_one_token)
 	create_user_second(admin_one_user_id, admin_one_token)
+	"""
 	for user in db[user_collection_name].find():
 		pprint.pprint (user)
 		print("\n\n")
+	"""
 	users_by_admin(admin_one_user_id, admin_one_token)
-
+	create_category_by_superadmin(super_admin_user_id)
+	create_category_by_question_uploader(question_uploader_id, question_uploader_token)
+	category_id_by_admin_one = create_category_by_admin_one(admin_one_user_id, admin_one_token)
+	get_category_by_admin_two(admin_one_user_id, admin_one_token, category_id_by_admin_one)
+	change_permissions_by_admin_two(admin_two_user_id, admin_two_token, category_id_by_admin_one)
+	adding_permissions_by_admin_one_for_admin_two(admin_one_user_id, admin_two_user_id, admin_one_token, category_id_by_admin_one)
 
 
 """

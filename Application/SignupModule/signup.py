@@ -14,7 +14,7 @@ from AuthenticationModule.authentication import auth
 #https://emptysqua.re/blog/refactoring-tornado-coroutines/
 ## finding user from motor  yields a future object which is nothing but a promise that it will have a value in future
 ## and gen.coroutine is a perfect to resolve a future object uyntillit is resolved
-from CategoryModule.categories import CategoriesPermissions
+
 import codecs
 
 reader = codecs.getreader("utf-8")
@@ -200,6 +200,7 @@ class Signup(tornado.web.RequestHandler):
 	@tornado.web.asynchronous
 	@tornado.gen.coroutine
 	def put(self, user_id):
+		##TODO if a user has to become a superadmin
 		user = yield self.collection.find_one({"user_id": user_id}, projection={'_id': False})
 		if user:
 				details = { k: self.get_argument(k) for k in self.request.arguments if k not in ["state", "region"]}
