@@ -6,7 +6,8 @@
 from SettingsModule.settings import question_collection_name, default_document_limit,\
 									indian_time, permissions, category_collection_name,\
 									app_super_admin, app_super_admin_pwd, app_super_admin_user_id,\
-									user_collection_name, sub_category_collection_name
+									user_collection_name, sub_category_collection_name, \
+									indian_time
 
 from AuthenticationModule.authentication import auth
 from tornado.web import asynchronous
@@ -29,7 +30,8 @@ def check_if_super_sub_category(user_collection, category_collection, sub_catego
 	when created the user will have all permissions on this sub category
 	"""
 
-	category = yield category_collection.find_one({"category_id": category_id}, projection={"_id": False, user_id: True})
+	category = yield category_collection.find_one({"category_id": category_id}, \
+		projection={"_id": False, user_id: True, "category_name": True})
 	logger.info(category)
 	logger.info(user_id)
 	logger.info(category[user_id])
@@ -45,11 +47,12 @@ def check_if_super_sub_category(user_collection, category_collection, sub_catego
 	##Check if a user is superadmin
 	if user["user_type"] == "superadmin":
 			logger.info("User is among superadmin")
-			return True 
+			return category["category_name"] 
 
 	if not category[user_id]:
 			raise Exception("The userid= [%s] doesnt have permissions to create subcategory on \
 				category with categoryid=[%s]"%(user_id, category_id))
+
 
 
 	##We dont have to check for get permissions has the userid cant see it, unless have
@@ -59,11 +62,12 @@ def check_if_super_sub_category(user_collection, category_collection, sub_catego
 			raise Exception("The userid= [%s] doesnt have %s permissions to on parent  \
 				category with categoryid=[%s] doesnt exists"%(user_id, rest_parameter, category_id))
 
-						i
+	return category["category_name"]
 								   
 
+
 @coroutine
-def if_module_permission(category_name, collection, user_id, rest_parameter, category_id):
+def if_module_permission(sub_category_collection, user_id, rest_parameter, sub_category_id):
 	"""
 	This method checks if the user_id has permission for the specific category, sub category etc 
 	in a particular module 
@@ -74,17 +78,23 @@ def if_module_permission(category_name, collection, user_id, rest_parameter, cat
 		rest_parameter: "get", "put", "create", "delete"
 
 	"""
-	user_permission = yield collection.find_one({"category_id": category_id}, \
-		projection={"_id": False, user_id: True})
-	logger.info(user_permission)
+	logger.info(type(sub_category_id))
+	sub_category = yield sub_category_collection.find_one({"sub_category_id": sub_category_id}, \
+									projection={"_id": False, "sub_category_id": True, user_id: True })
+	logger.info(sub_category)
+	logger.info(sub_category_id)
+	if not sub_category:
+		raise Exception("The subcategory with id[%s] doesnt exists"%sub_category_id)
 
+	if not sub_category.get(user_id, None):
+		raise Exception("The subcategory with id[%s] doest have permissions for user_id [%s]"%(sub_category_id, user_id))
 
 	try:
-		if user_permission[user_id][rest_parameter]:
-			logger.info("The user_id [%s] has [%s] permissions for this category [%s]"%(user_id, rest_parameter, category_id))
+		if sub_category[user_id][rest_parameter]:
+			logger.info("The user_id [%s] has [%s] permissions for this category [%s]"%(user_id, rest_parameter, sub_category_id))
 			return True
 	except Exception:
-			logger.info("The user_id [%s] doesnt have [%s] permissions for this category [%s]"%(user_id, rest_parameter, category_id))
+			logger.info("The user_id [%s] doesnt have [%s] permissions for this category [%s]"%(user_id, rest_parameter, sub_category_id))
 			return False
 
 	return 
@@ -96,7 +106,9 @@ class SubCategoryPermissions(tornado.web.RequestHandler):
 		self.db = self.settings["db"]
 		self.category_collection = self.db[category_collection_name]	
 		self.user_collection = self.db[user_collection_name]
+		self.sub_category_collection = self.db[sub_category_collection_name]
 
+	@asynchronous
 	@coroutine
 	def post(self):
 		"""
@@ -115,25 +127,27 @@ class SubCategoryPermissions(tornado.web.RequestHandler):
 		post_arguments = json.loads(self.request.body.decode("utf-8"))
 		user_id = post_arguments.get("user_id", None)
 		permissions = post_arguments.get("permissions", None)
-		category_id = post_arguments.get("category_id", None)
+		sub_category_id = post_arguments.get("sub_category_id", None)
+		logger.info(post_arguments)
 		try:
 			assert isinstance(permissions, list), "permissions must be an array of objects"
-			assert category_id is not None, "category_id cannot be left empty"
+			assert sub_category_id is not None, "sub_category_id cannot be left empty"
 			assert user_id is  not None, "user_id cannot be left empty"
 
 			##rest_paramter is "create", because only the admin who have create permission on this category 
 			##will have the right to change admin for this particular category
-			yield check_if_super(None, self.user_collection, self.category_collection, user_id, "create", category_id)
-			logger.info("The user [%s] have create permission on category [%s]"%(user_id, category_id))
+			yield if_module_permission(self.sub_category_collection, user_id, "create", sub_category_id)
+			
+			logger.info("The user [%s] have create permission on sub_category [%s]"%(user_id, sub_category_id))
 
 			for permission_obj in permissions:
 					user_id = permission_obj.pop("user_id")
-					update_category_collection = yield self.category_collection.update_one({"category_id": category_id}, \
+					update_category_collection = yield self.sub_category_collection.update_one({"sub_category_id": sub_category_id}, \
 						{"$set": {user_id: permission_obj}}, upsert=True)
 					logger.info(update_category_collection.modified_count)
 
 					update_user_collection = yield self.user_collection.update_one({"user_id": user_id}, \
-						{"$set": {"permissions.category.%s"%category_id: permission_obj}}, upsert=False)
+						{"$set": {"permissions.sub_category.%s"%sub_category_id: permission_obj}}, upsert=False)
 					logger.info(update_user_collection.modified_count)
 
 
@@ -142,10 +156,9 @@ class SubCategoryPermissions(tornado.web.RequestHandler):
 			self.write({"error": True, "success": False, "message": e.__str__()})
 			self.finish()
 			return 
-		self.write({"error": False, "success": True, "category_id": category_id, "message": "Permissions updated"})
+		self.write({"error": False, "success": True, "sub_category_id": sub_category_id, "message": "Permissions updated"})
 		self.finish()
 		return 
-
 
 
 
@@ -170,7 +183,7 @@ class SubCategory(tornado.web.RequestHandler):
 			"""
 			#permissions = {"create": False, "delete": False, "edit": False, "get": False}
 			post_arguments = json.loads(self.request.body.decode("utf-8"))
-			sub_category_name = post_arguments.get("category_name", None)
+			sub_category_name = post_arguments.get("sub_category_name", None)
 			text_description = post_arguments.get("text_description", None)
 			score = post_arguments.get("text_description", None)
 			user_id = post_arguments.get("user_id", None) ##who created this category
@@ -178,8 +191,8 @@ class SubCategory(tornado.web.RequestHandler):
 
 			
 			try:
-					yield check_if_super_sub_category(self.user_collection, self.category_collection, self.sub_category_collection, \
-													user_id, "create", category_id)
+					category_name = yield check_if_super_sub_category(self.user_collection, \
+						self.category_collection, self.sub_category_collection, user_id, "create", category_id)
 
 
 					sub_category = yield self.sub_category_collection.find_one({"category_name": sub_category_name})
@@ -191,10 +204,12 @@ class SubCategory(tornado.web.RequestHandler):
 
 					sub_category_id = hashlib.sha1(sub_category_hash.encode("utf-8")).hexdigest()
 					category = yield self.sub_category_collection.insert_one({"sub_category_id": sub_category_id, \
-																			"category_name": sub_category_name,
+																			"sub_category_name": sub_category_name,
 																			"module_type": "sub_category",
-																			"category_id": category_id, 
-							"user_id": user_id, "score": score, "text_description": text_description})
+																			"category_id": category_id,
+																			"category_name": category_name,
+							"user_id": user_id, "score": score, "text_description": text_description, 
+							"utc_epoch": time.time(), "indian_time": indian_time()})
 					logger.info("New sub category with name %s and _id=%s created by user id [%s]"%(sub_category_name,\
 					 category.inserted_id, user_id))
 
@@ -230,9 +245,11 @@ class SubCategory(tornado.web.RequestHandler):
 			##get permission on the subcategory
 			#user_permission = yield self.collection.find_one({"name": "super_permissions", "all": {"$in": [user_id]}}, projection={"_id": True})
 			try:
-				yield check_if_super_sub_category(self.user_collection, self.category_collection, self.sub_category_collection, \
-													user_id, "get", category_id)
-				category = yield self.category_collection.find_one({"category_id": category_id}, projection={"_id": False})
+				logger.info("This is the sub category id %s"%sub_category_id)
+				yield if_module_permission(self.sub_category_collection, user_id, "get", sub_category_id)
+
+				category = yield self.sub_category_collection.find_one({"sub_category_id": sub_category_id}, projection={"_id": False, 
+						"text_description": True, "score": True, "category_name": True})
 			except Exception as e:
 				print (traceback.format_exc())
 				logger.error(e)
@@ -312,23 +329,35 @@ class SubCategories(tornado.web.RequestHandler):
 
 	def initialize(self):
 		self.db = self.settings["db"]
-		self.collection = self.db[category_collection_name]	
+		self.category_collection = self.db[category_collection_name]	
+		self.user_collection = self.db[user_collection_name]
+		self.sub_category_collection = self.db[sub_category_collection_name]
 
 
 
 	@asynchronous
 	@coroutine
-	def get(self, limit=None, skip=None, admin_id=None, category_id=None, sub_category_id=None, date_created=None):
-		limit = self.get_argument("limit", None)
-		skip = self.get_argument("skip", None)
+	def post(self):
+		post_arguments = json.loads(self.request.body.decode("utf-8"))
+		user_id = post_arguments.get("user_id", None) ##who created this category
+		category_id = post_arguments.get("category_id", None)
+		limit = post_arguments.get("limit", 10)
+		skip = post_arguments.get("skip", 0)
+		try:
+			sub_categories = yield self.sub_category_collection.find({"category_id": category_id, \
+				"%s.%s"%(user_id, "get"): True}, projection={"_id": False}).\
+					skip(skip).sort([('indian_time', -1)]).to_list(length=limit)
+		except Exception as e:
+			print (traceback.format_exc())
+			logger.error(e)
+			self.write({"error": True, "success": False, "message": e.__str__()})
+			self.finish()
+			return 
+		self.write({"error": False, "success": True, "result": sub_categories})
+		self.finish()
+		return 
 
-		if not limit:
-			limit = default_document_limit
-		if not skip:
-			skip = 0
 
-
-		pass
 
 
 

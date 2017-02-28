@@ -6,7 +6,7 @@
 from SettingsModule.settings import question_collection_name, default_document_limit,\
 									indian_time, permissions, category_collection_name,\
 									app_super_admin, app_super_admin_pwd, app_super_admin_user_id,\
-									user_collection_name
+									user_collection_name, indian_time
 
 from AuthenticationModule.authentication import auth
 from tornado.web import asynchronous
@@ -46,10 +46,8 @@ def check_if_super(category_name, user_collection, category_collection, user_id,
 
 	permission = yield if_module_permission(category_name, category_collection, user_id, rest_parameter, category_id)
 	if permission:
-		logger.info("Some fucks happened and its returning True")
 		return True
 	else:
-		logger.info("Some fucks happened")
 		raise Exception("Insufficient permission for the user %s"%user_id)
 				
 	return 
@@ -83,13 +81,14 @@ def if_module_permission(category_name, collection, user_id, rest_parameter, cat
 	return 
 
 
-
+@auth
 class CategoryPermissions(tornado.web.RequestHandler):
 	def initialize(self):
 		self.db = self.settings["db"]
 		self.category_collection = self.db[category_collection_name]	
 		self.user_collection = self.db[user_collection_name]
 
+	@asynchronous
 	@coroutine
 	def post(self):
 		"""
@@ -105,6 +104,8 @@ class CategoryPermissions(tornado.web.RequestHandler):
 
 
 		"""
+
+
 		post_arguments = json.loads(self.request.body.decode("utf-8"))
 		user_id = post_arguments.get("user_id", None)
 		permissions = post_arguments.get("permissions", None)
@@ -133,6 +134,7 @@ class CategoryPermissions(tornado.web.RequestHandler):
 		except Exception as e:
 			logger.error(e)
 			self.write({"error": True, "success": False, "message": e.__str__()})
+			logger.info("request written")
 			self.finish()
 			return 
 		self.write({"error": False, "success": True, "category_id": category_id, "message": "Permissions updated"})
@@ -322,7 +324,8 @@ class Category(tornado.web.RequestHandler):
 
 					category_id = hashlib.sha1(category_hash.encode("utf-8")).hexdigest()
 					category = yield self.category_collection.insert_one({"category_id": category_id, "category_name": category_name, 
-							"user_id": user_id, "score": score, "text_description": text_description})
+							"user_id": user_id, "score": score, "text_description": text_description, 
+							"utc_epoch": time.time(), "indian_time": indian_time()})
 					logger.info("New category with name %s and _id=%s created by user id [%s]"%(category_name, category.inserted_id, user_id))
 
 

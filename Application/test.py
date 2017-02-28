@@ -312,11 +312,13 @@ def	change_permissions_by_admin_two(admin_two_user_id, admin_two_token, category
 	cprint("Trying to change permissions  by admin two of category created by admin one", "green")
 	data_object = {"category_id": category_id_by_admin_one, "user_id": admin_two_user_id, "permissions": []}
 
+	print (data_object)
+	print ({"Authorization": admin_two_token})
 	r = requests.post("http://localhost:8000/categorypermissions", data=json.dumps(data_object),\
 	 headers={"Authorization": admin_two_token})
 
+	print (r)
 	print (r.text)
-	"""
 	if r.json()['message'] != 'Insufficient permission for the user %s'%question_uploader_id:
 		cprint("Test Failed", "red", "on_white")
 	else:
@@ -326,7 +328,6 @@ def	change_permissions_by_admin_two(admin_two_user_id, admin_two_token, category
 	else:
 			cprint("Test Passed", "green", "on_white")
 	return 
-	"""	
 
 
 
@@ -342,6 +343,7 @@ def	adding_permissions_by_admin_one_for_admin_two(admin_one_user_id, admin_two_u
 	r = requests.post("http://localhost:8000/categorypermissions", data=json.dumps(data_object),\
 	 headers={"Authorization": admin_two_token})
 
+	print(r)
 	print (r.text)
 	"""
 	if r.json()['message'] != 'Insufficient permission for the user %s'%question_uploader_id:
@@ -404,7 +406,53 @@ def	create_sub_category_by_admin_two(admin_two_user_id, admin_two_token, categor
 					 
 
 
+	return r.json()["sub_category_id"]
+
+
+def get_sub_category_admin_one(sub_category_id_admin_two, admin_one_user_id, admin_one_token):
+	print ("\n\n")
+	cprint("Trying to get sub category [%s] by admin Two by admin one"%(sub_category_id_admin_two), "green")
+	cprint("Must Fail because this category has been created by admin two")
+	cprint("All other rest requests follows the same ")
+
+
+	r = requests.get("http://localhost:8000/subcategory/%s"%sub_category_id_admin_two, data=json.dumps({"user_id": admin_one_user_id}),\
+	 headers={"Authorization": admin_one_token})
+	cprint(r.json(), "blue")
+	"""
+	if r.json()['message'] != 'Insufficient permission for the user %s'%question_uploader_id:
+		cprint("Test Failed", "red", "on_white")
+	else:
+			cprint("Test Passed", "green", "on_white")
+	"""	
+
+	if r.json()['message'] != "The subcategory with id[%s] doest have permissions for user_id [%s]"%(sub_category_id_admin_two, admin_one_user_id):
+		cprint("\t\tTest Failed", "red", "on_white")
+	else:
+			cprint("\t\tTest Passed", "green", "on_white")
 	return 
+
+
+def update_permission_for_question_uploader(sub_category_id_admin_two, question_uploader_id,\
+					admin_two_user_id, admin_two_token):
+	print ("\n\n")
+	cprint("Update Permission on sub category [%s] by admin_one [%s] who created\
+	 this subcategory for the question_uploader_id [%s]"%(sub_category_id_admin_two, \
+	 	admin_two_user_id, question_uploader_id), "green")
+	cprint("Must pass")
+	permission_object = [{"user_id": admin_one_user_id , "create": True, "delete": False, "get": True, "put": True}]
+	data_object = {"sub_category_id": sub_category_id_admin_two, "user_id": admin_two_user_id, \
+	"permissions": permission_object}
+
+	r = requests.post("http://localhost:8000/subcategorypermissions", data=json.dumps(data_object),\
+	 headers={"Authorization": admin_two_token})
+
+	cprint(r.json(), "blue")
+
+
+
+
+
 
 
 
@@ -436,8 +484,13 @@ if __name__ == "__main__":
 	get_category_by_admin_two(admin_one_user_id, admin_one_token, category_id_by_admin_one)
 	change_permissions_by_admin_two(admin_two_user_id, admin_two_token, category_id_by_admin_one)
 	adding_permissions_by_admin_one_for_admin_two(admin_one_user_id, admin_two_user_id, admin_one_token, category_id_by_admin_one)
-	create_sub_category_by_admin_two(admin_two_user_id, admin_two_token, category_id_by_admin_one)
+	sub_category_id_admin_two = create_sub_category_by_admin_two(admin_two_user_id, admin_two_token, category_id_by_admin_one)
 
+	get_sub_category_admin_one(sub_category_id_admin_two, admin_one_user_id, admin_one_token)
+
+
+	update_permission_for_question_uploader(sub_category_id_admin_two, question_uploader_id,\
+					admin_two_user_id, admin_two_token)
 
 """
 
