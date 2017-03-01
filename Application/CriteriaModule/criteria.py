@@ -23,7 +23,7 @@ import time
 
 
 
-
+@auth
 class CriteriaPermissions(GenericPermissions):
 	def initialize(self):
 		self.db = self.settings["db"]
@@ -50,6 +50,7 @@ class Criteria(Generic):
 
 
 
+@auth
 class Criterion(Generics):
 	"""
 	Return questions 
@@ -67,7 +68,7 @@ class Criterion(Generics):
 		self.child_collection = self.db[sub_criteria_collection_name]
 		self.child_collection_name = sub_criteria_collection_name
 		self.document_id = "criteria_id"
-		self.document_name = "sub_category"
+		self.document_name = "criteria"
 
 
 

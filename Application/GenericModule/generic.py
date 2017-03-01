@@ -100,7 +100,8 @@ def delete_children(db, children, child_collection_name):
 		yield collection.delete_one({"module_id": child_id})
 		child_children = child["children"]
 		child_child_collection_name = child["child_collection_name"]
-		delete_children(db, child_children, child_child_collection_name)
+		if child_child_collection_name:
+			delete_children(db, child_children, child_child_collection_name)
 
 	return False
 
