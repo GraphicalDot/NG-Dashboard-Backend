@@ -33,7 +33,7 @@ class CriteriaPermissions(GenericPermissions):
 		self.child_collection = self.db[sub_criteria_collection_name]
 		self.child_collection_name = sub_criteria_collection_name
 		self.document_id = "criteria_id"
-		self.document_name = "criteria_name"
+		self.document_name = "criteria"
 
 
 @auth

@@ -7,7 +7,7 @@ from SettingsModule.settings import question_collection_name, default_document_l
 									indian_time, permissions, category_collection_name,\
 									app_super_admin, app_super_admin_pwd, app_super_admin_user_id,\
 									user_collection_name, criteria_collection_name, \
-									indian_time, sub_criteria_collection_name
+									indian_time, sub_criteria_collection_name, question_collection_name
 
 from GenericModule.generic import GenericPermissions, Generic, Generics
 
@@ -30,8 +30,8 @@ class LevelPermissions(GenericPermissions):
 		self.parent_collection = self.db[sub_criteria_collection_name]	
 		self.user_collection = self.db[user_collection_name]
 		self.module_collection = self.db[level_collection_name]
-		self.child_collection = None
-		self.child_collection_name = None
+		self.child_collection = db[question_collection_name]
+		self.child_collection_name = question_collection_name
 		self.document_id = "level_id"
 		self.document_name = "level"
 
@@ -43,8 +43,8 @@ class Level(Generic):
 		self.parent_collection = self.db[sub_criteria_collection_name]	
 		self.user_collection = self.db[user_collection_name]
 		self.module_collection = self.db[level_collection_name]
-		self.child_collection = None
-		self.child_collection_name = None
+		self.child_collection = db[question_collection_name]
+		self.child_collection_name = question_collection_name
 		self.document_id = "level_id"
 		self.document_name = "level"
 

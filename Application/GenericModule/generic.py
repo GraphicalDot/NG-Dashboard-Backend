@@ -1,7 +1,4 @@
 
-
-
-
 #!/usr/bin/env python3
 from SettingsModule.settings import question_collection_name, default_document_limit,\
 									indian_time, permissions, category_collection_name,\
@@ -19,6 +16,8 @@ import json
 import traceback
 import time 
 import uuid
+
+
 @coroutine
 def if_create_permissions(user_collection, parent_collection, module_collection, \
 													user_id, rest_parameter, parent_id):
@@ -197,15 +196,28 @@ class Generic(tornado.web.RequestHandler):
 			"""
 			#permissions = {"create": False, "delete": False, "edit": False, "get": False}
 			post_arguments = json.loads(self.request.body.decode("utf-8"))
+
+			##example is document_name is level, criteria, sub_criteria, question
+			##that will also happen to be module_type when inserting the document
+			## when getting the post arguments, _name will be appended to it
+			## for example module_name will get level_name, criteria_name etc from the 
+			##post arguments.
 			module_name = post_arguments.get("%s_name"%self.document_name, None)
 			text_description = post_arguments.get("text_description", None)
 			score = post_arguments.get("score", None)
 			user_id = post_arguments.get("user_id", None) ##who created this category
 			parent_id = post_arguments.get("parent_id", None)
-
 			try:
+					if self.document_name == "question":
+						documents_required = post_arguments.get("documents_required")
+						assert isinstance(documents_required, list), "documents_required cannot be left empty"
+					
+
+					assert module_name is not None, "module_name  cannot be left empty"
+					assert user_id is  not None, "user_id cannot be left empty"
+
+
 					##name of the parent category, subcategory. subcriteria etc
-					print ("tatti bhais ki")
 					logger.info(parent_id)
 					parent_document = yield if_create_permissions(self.user_collection, \
 						self.parent_collection, self.module_collection, user_id, "create", parent_id)
@@ -222,14 +234,14 @@ class Generic(tornado.web.RequestHandler):
 					
 					parent_document["parents"].append({"name": parent_document["module_name"], "id": parent_document["module_id"] })
 					logger.info(parent_document["parents"])
-					result = yield self.module_collection.insert_one({"module_id": module_id, \
-																			"module_name": module_name,
-																			"module_type": self.document_name,
-																			"parent_id": parent_id,
-																			"parents": parent_document["parents"], 
-																			"child_collection_name": self.child_collection_name,
-							"user_id": user_id, "score": score, "text_description": text_description, 
-							"utc_epoch": time.time(), "indian_time": indian_time()})
+
+					data = {"module_id": module_id, "module_name": module_name, "module_type": self.document_name,\
+							"parent_id": parent_id, "parents": parent_document["parents"], \
+							"child_collection_name": self.child_collection_name, "user_id": user_id,\
+							 "score": score, "text_description": text_description, "utc_epoch": time.time(), \
+							 "indian_time": indian_time()}
+
+					result = yield self.module_collection.insert_one(data)
 
 					self.parent_collection.update({"module_id": parent_id}, {"$addToSet": {"children": module_id}}, upsert=False)
 
@@ -361,8 +373,21 @@ class Generics(tornado.web.RequestHandler):
 		user_id = post_arguments.get("user_id", None) ##who created this category
 		limit = post_arguments.get("limit", 10)
 		skip = post_arguments.get("skip", 0)
+		parent_id = post_arguments.get("parent_id", None)
+		"""
+		Arguments:
+			SO for an example application wants to get all the subcriteria on which user
+			have required permissions.But if only user_id is provided the application will get
+			all the subcriteria belonging to different criteria.
+
+			What if application wants to get sucriteria belonging to a specific criteria  and with
+			the user permissions available on these subcriteira.
+			user_id:
+
+			parent_id:
+		"""
 		try:
-			result = yield self.module_collection.find({"user_permissions.%s.%s"%(user_id, "get"): True}, \
+			result = yield self.module_collection.find({"parent_id": parent_id, "user_permissions.%s.%s"%(user_id, "get"): True}, \
 				projection={"_id": False, "user_permissions": False}).\
 			skip(skip).sort([('indian_time', -1)]).to_list(length=limit)
 		except Exception as e:

@@ -1,68 +1,88 @@
 
 
 
+
 #!/usr/bin/env python3
-from SettingsModule.settings import question_collection_name, default_document_limit, indian_time
+from SettingsModule.settings import question_collection_name, default_document_limit,\
+									indian_time, permissions, category_collection_name,\
+									app_super_admin, app_super_admin_pwd, app_super_admin_user_id,\
+									user_collection_name, criteria_collection_name, \
+									indian_time, sub_criteria_collection_name
+
+from GenericModule.generic import GenericPermissions, Generic, Generics
+
+from AuthenticationModule.authentication import auth
 from tornado.web import asynchronous
 from tornado.gen import coroutine
 import tornado
+from LoggingModule.logging import logger
+import hashlib
+import json
+import traceback
+import time
 
 
-class Question(tornado.web.RequestHandler):
+
+@auth
+class QuestionPermissions(GenericPermissions):
 	def initialize(self):
 		self.db = self.settings["db"]
-		self.collection = self.db[question_collection_name]	
+		self.parent_collection = self.db[level_collection_name]	
+		self.user_collection = self.db[user_collection_name]
+		self.module_collection = self.db[question_collection_name]
+		self.child_collection = None
+		self.child_collection_name = None
+		self.document_id = "question_id"
+		self.document_name = "question"
 
-	@asynchronous
-	@coroutine
-	def get(self, question_id):
-			pass
 
-
-	@asynchronous
-	@coroutine
-	def put(self, question_id):
-			pass
-
-	@asynchronous
-	@coroutine
-	def post(self, question_id):
-			pass
-
-	@asynchronous
-	@coroutine
-	def delete(self, question_id):
-			pass
+@auth
+class Question(Generic):
+	def initialize(self):
+		self.db = self.settings["db"]
+		self.parent_collection = self.db[level_collection_name]	
+		self.user_collection = self.db[user_collection_name]
+		self.module_collection = self.db[question_collection_name]
+		self.child_collection = None
+		self.child_collection_name = None
+		self.document_id = "question_id"
+		self.document_name = "question"
 
 
 
-class Questions(tornado.web.RequestHandler):
+@auth
+class Criterion(Generics):
 	"""
 	Return questions 
 	Questions can filtered according to the 
 		admin created id
 		superadmin id
 		category id
-		sub category id
 		date created	
 	"""
 
 	def initialize(self):
 		self.db = self.settings["db"]
-		self.collection = self.db[question_collection_name]	
-
-	@asynchronous
-	@coroutine
-	def get(self, limit=None, skip=None, admin_id=None, category_id=None, sub_category_id=None, date_created=None):
-		limit = self.get_argument("limit", None)
-		skip = self.get_argument("skip", None)
-
-		if not limit:
-			limit = default_document_limit
-		if not skip:
-			skip = 0
+		self.user_collection = self.db[user_collection_name]
+		self.module_collection = self.db[question_collection_name]
+		self.child_collection = None
+		self.child_collection_name = None
+		self.document_id = "question_id"
+		self.document_name = "question"
 
 
-		pass
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
