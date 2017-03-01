@@ -199,12 +199,14 @@ class Generic(tornado.web.RequestHandler):
 			post_arguments = json.loads(self.request.body.decode("utf-8"))
 			module_name = post_arguments.get("%s_name"%self.document_name, None)
 			text_description = post_arguments.get("text_description", None)
-			score = post_arguments.get("text_description", None)
+			score = post_arguments.get("score", None)
 			user_id = post_arguments.get("user_id", None) ##who created this category
 			parent_id = post_arguments.get("parent_id", None)
 
 			try:
 					##name of the parent category, subcategory. subcriteria etc
+					print ("tatti bhais ki")
+					logger.info(parent_id)
 					parent_document = yield if_create_permissions(self.user_collection, \
 						self.parent_collection, self.module_collection, user_id, "create", parent_id)
 
@@ -357,13 +359,12 @@ class Generics(tornado.web.RequestHandler):
 	def post(self):
 		post_arguments = json.loads(self.request.body.decode("utf-8"))
 		user_id = post_arguments.get("user_id", None) ##who created this category
-		module_id = post_arguments.get(self.document_id, None)
 		limit = post_arguments.get("limit", 10)
 		skip = post_arguments.get("skip", 0)
 		try:
-			result = yield self.module_collection.find({self.document_id: module_id, \
-				"%s.%s"%(user_id, "get"): True}, projection={"_id": False}).\
-					skip(skip).sort([('indian_time', -1)]).to_list(length=limit)
+			result = yield self.module_collection.find({"user_permissions.%s.%s"%(user_id, "get"): True}, \
+				projection={"_id": False, "user_permissions": False}).\
+			skip(skip).sort([('indian_time', -1)]).to_list(length=limit)
 		except Exception as e:
 			print (traceback.format_exc())
 			logger.error(e)
@@ -373,7 +374,6 @@ class Generics(tornado.web.RequestHandler):
 		self.write({"error": False, "success": True, "result": result})
 		self.finish()
 		return 
-
 
 
 

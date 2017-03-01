@@ -63,8 +63,9 @@ def if_module_permission(category_name, collection, user_id, rest_parameter, cat
 		rest_parameter: "get", "put", "create", "delete"
 
 	"""
+	logger.info(collection)
 	user_permission = yield collection.find_one({"module_id": category_id}, \
-		projection={"_id": False, "user_permissions": True})
+		projection={"_id": False})
 	logger.info(user_permission)
 
 
@@ -356,7 +357,7 @@ class Category(tornado.web.RequestHandler):
 			user_id = get_arguments.get("user_id", None) ##who created this category
 			#user_permission = yield self.collection.find_one({"name": "super_permissions", "all": {"$in": [user_id]}}, projection={"_id": True})
 			try:
-				yield check_if_super(None, self.user_collection, self.category_collection, user_id, "get", None)
+				yield check_if_super(None, self.user_collection, self.category_collection, user_id, "get", category_id)
 				category = yield self.category_collection.find_one({"module_id": category_id}, projection={"_id": False})
 			except Exception as e:
 				print (traceback.format_exc())
@@ -382,7 +383,7 @@ class Category(tornado.web.RequestHandler):
 			score = post_arguments.get("text_description", None)
 			user_id = post_arguments.get("user_id", None) ##who created this category
 			try:
-					yield check_if_super(None, self.user_collection, self.category_collection, user_id, "put", None)
+					yield check_if_super(None, self.user_collection, self.category_collection, user_id, "put", category_id)
 
 					self.collection.update_one({"module_id": category_id}, {"$set":{"text_description": text_description,\
 						"score": score}}, upsert=False)					
@@ -409,7 +410,7 @@ class Category(tornado.web.RequestHandler):
 			post_arguments = json.loads(self.request.body.decode("utf-8"))
 			user_id = post_arguments.get("user_id", None) ##who created this category
 			try:
-				yield check_if_super(None, self.user_collection, self.category_collection, user_id, "delete", None)				
+				yield check_if_super(None, self.user_collection, self.category_collection, user_id, "delete", category_id)				
 				self.category_collection.delete_one({"module_id": category_id})
 			except Exception as e:
 				print (traceback.format_exc())
@@ -422,7 +423,7 @@ class Category(tornado.web.RequestHandler):
 			return 
 
 
-
+@auth
 class Categories(tornado.web.RequestHandler):
 	"""
 	Return questions 
@@ -441,22 +442,24 @@ class Categories(tornado.web.RequestHandler):
 
 	@asynchronous
 	@coroutine
-	def get(self, limit=None, skip=None, admin_id=None, category_id=None, sub_category_id=None, date_created=None):
-		limit = self.get_argument("limit", None)
-		skip = self.get_argument("skip", None)
-
-		if not limit:
-			limit = default_document_limit
-		if not skip:
-			skip = 0
-
-
-		pass
-
-
-
-
-
+	def post(self):
+		post_arguments = json.loads(self.request.body.decode("utf-8"))
+		user_id = post_arguments.get("user_id", None) ##who created this category
+		limit = post_arguments.get("limit", 10)
+		skip = post_arguments.get("skip", 0)
+		try:
+			result = yield self.collection.find({"user_permissions.%s.%s"%(user_id, "get"): True}, \
+				projection={"_id": False, "user_permissions": False}).\
+			skip(skip).sort([('indian_time', -1)]).to_list(length=limit)
+		except Exception as e:
+			print (traceback.format_exc())
+			logger.error(e)
+			self.write({"error": True, "success": False, "message": e.__str__()})
+			self.finish()
+			return 
+		self.write({"error": False, "success": True, "result": result})
+		self.finish()
+		return 
 
 
 

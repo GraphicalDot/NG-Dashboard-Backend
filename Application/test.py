@@ -4,6 +4,7 @@ import json
 import pprint
 import pymongo
 from termcolor import colored, cprint
+import random
 
 app_super_admin = "nctsuperadmin"
 app_super_admin_pwd = "1234Pacific###"
@@ -35,6 +36,10 @@ criteria_collection = db[criteria_collection_name]
 #db[level_collection_name].update_one({"name": "super_permissions"},  {"$addToSet": { "all": "superadmin"}}, upsert=True)
 
 address = "http://localhost:8000"
+from faker import Faker
+fake = Faker()
+
+
 
 
 ##made from superadmin pass and womething bulshit
@@ -456,8 +461,128 @@ def update_criteria_permission_for_question_uploader(sub_category_id_admin_two, 
 
 
 
+def create_admin(super_admin_id):
+	user_one = {
+ 		'email': fake.email(),
+ 		'full_name': fake.name(),
+ 		'password': fake.password(),
+ 		'region': [fake.city(), fake.city()],
+ 		'state': [fake.state(), fake.state()],
+ 		'user_type': 'admin',
+ 		'username': fake.user_name(),
+ 		'parent_user_id': super_admin_id, 
+ 		'is_superadmin': False}
+
+	r = requests.post("http://localhost:8000/signup", data=json.dumps(user_one), headers=headers )
+	cprint(r.json(), "blue")
+	return (r.json()["user_id"], r.json()["token"])
 
 
+def	create_category(user_id, token):
+
+	category_data = {"category_name": fake.slug(),
+				 "text_description": fake.text(), 
+				 "score": random.randint(0, 100),
+				 "user_id": user_id
+				 }
+	r = requests.post("http://localhost:8000/category", data=json.dumps(category_data), headers={"Authorization": token})
+	print ("\n\n")
+	cprint(r.json(), "blue")
+	return r.json()["category_id"]
+
+
+def	create_criteria(user_id, parent_id, token, success):
+
+	category_data = {"criteria_name": fake.slug(),
+					"parent_id": parent_id, 
+				 "text_description": fake.text(), 
+				 "score": random.randint(0, 100),
+				 "user_id": user_id
+				 }
+	r = requests.post("http://localhost:8000/criteria", data=json.dumps(category_data), headers={"Authorization": token})
+	print ("\n\n")
+	cprint(r.json(), "blue")
+	if r.json()["success"] == success:
+		cprint("\t\tTest Passed", "green", "on_white")
+	else:
+		cprint("\t\tTest Failed", "red", "on_white")
+	try:
+		module_id = r.json()["module_id"]
+	except:
+		module_id = None
+
+
+	return module_id
+
+
+def get_category(user_id, category_id, token, success):
+	r = requests.get("http://localhost:8000/category/%s"%category_id, data=json.dumps({"user_id": user_id}),\
+	 headers={"Authorization": token})
+	cprint(r.json(), "blue")	
+	if r.json()["success"] == success:
+		cprint("\t\tTest Passed", "green", "on_white")
+	else:
+		cprint("\t\tTest Failed", "red", "on_white")
+	return 
+
+
+def get_module(user_id, module_id, module_name, token, success):
+	r = requests.get("http://localhost:8000/%s/%s"%(module_name, module_id), data=json.dumps({"user_id": user_id}),\
+	 headers={"Authorization": token})
+	cprint(r.json(), "blue")	
+	if r.json()["success"] == success:
+		cprint("\t\tTest Passed", "green", "on_white")
+	else:
+		cprint("\t\tTest Failed", "red", "on_white")
+	return 
+
+
+def get_all_module(user_id, module_name, token, length):
+	print (user_id)
+	r = requests.post("http://localhost:8000/%s"%module_name, data=json.dumps({"user_id": user_id}),\
+	 headers={"Authorization": token})
+	cprint(r.json(), "blue")	
+	if len(r.json()["result"]) == length:
+		cprint("\t\tTest Passed", "green", "on_white")
+	else:
+		cprint("\t\tTest Failed", "red", "on_white")
+	return 
+
+
+def	create_module(user_id, parent_id, module_api, module_name, token, success):
+
+	data = {module_name: fake.slug(),
+					"parent_id": parent_id, 
+				 "text_description": fake.text(), 
+				 "score": random.randint(0, 100),
+				 "user_id": user_id
+				 }
+	r = requests.post("http://localhost:8000/%s"%module_api, data=json.dumps(data), headers={"Authorization": token})
+	print ("\n\n")
+	cprint(r.json(), "blue")
+	if r.json()["success"] == success:
+		cprint("\t\tTest Passed", "green", "on_white")
+	else:
+		cprint("\t\tTest Failed", "red", "on_white")
+	try:
+		module_id = r.json()["module_id"]
+	except:
+		module_id = None
+
+
+	return module_id
+
+
+def get_all_categories(user_id, token, length):
+	print (user_id)
+	r = requests.post("http://localhost:8000/categories", data=json.dumps({"user_id": user_id}),\
+	 headers={"Authorization": token})
+	cprint(r.json(), "blue")	
+	if len(r.json()["result"]) == length:
+		cprint("\t\tTest Passed", "green", "on_white")
+	else:
+		cprint("\t\tTest Failed", "red", "on_white")
+	return 
 
 
 
@@ -487,7 +612,7 @@ if __name__ == "__main__":
 	create_category_by_question_uploader(question_uploader_id, question_uploader_token)
 	category_id_by_admin_one = create_category_by_admin_one(admin_one_user_id, admin_one_token)
 
-	get_category_by_admin_two(admin_one_user_id, admin_one_token, category_id_by_admin_one)
+	get_category_by_admin_two(admin_two_user_id, admin_two_token, category_id_by_admin_one)
 	change_permissions_by_admin_two(admin_two_user_id, admin_two_token, category_id_by_admin_one)
 	adding_permissions_by_admin_one_for_admin_two(admin_one_user_id, admin_two_user_id, admin_one_token, category_id_by_admin_one)
 	sub_category_id_admin_two = create_criteria_by_admin_two(admin_two_user_id, admin_two_token, category_id_by_admin_one)
@@ -498,142 +623,55 @@ if __name__ == "__main__":
 	update_criteria_permission_for_question_uploader(sub_category_id_admin_two, question_uploader_id,\
 					admin_two_user_id, admin_two_token)
 
-"""
 
-def create_admin_one():
-	cprint("creating first admin by super admin", "green")
-	user_one = {
- 		'email': 'adminone@gmail.com',
- 		'full_name': 'admin one',
- 		'password': 'passwordone',
- 		'region': ['delhi', 'mumbai'],
- 		'state': ['delhi', 'mumbai'],
- 		'user_type': 'admin',
- 		'username': 'adminone',
- 		'parent_id': app_super_admin_user_id, 
- 		'is_superadmin': False}
+	a_admin_id, a_admin_token = create_admin(super_admin_user_id)
+	b_admin_id, b_admin_token = create_admin(super_admin_user_id)
+	c_admin_id, c_admin_token = create_admin(super_admin_user_id)
+	
+	aa_cat_id = create_category(a_admin_id, a_admin_token)
+	ab_cat_id = create_category(a_admin_id, a_admin_token)
+	ac_cat_id = create_category(a_admin_id, a_admin_token)
 
-	r = requests.post("http://localhost:8000/signup", data=json.dumps(user_one), headers=headers )
-	pprint.pprint(r.json())
-	return (r.json()["user_id"], r.json()["token"])
+	bb_cat_id = create_category(b_admin_id, b_admin_token)
+	cc_cat_id = create_category(c_admin_id, c_admin_token)
 
-user_two = {
- 'email': 'houzier.saurav@gmail.com',
- 'full_name': 'saurav verma',
- 'password': '12345',
- 'region': ['chandigram', 'rajasthan'],
- 'state': ['delhi', 'mumbai'],
- 'user_type': 'admin',
- 'username': 'kaali'}
+	print(aa_cat_id)
+	get_category(a_admin_id, aa_cat_id, a_admin_token, True)
+	get_category(b_admin_id, bb_cat_id, b_admin_token, True)
 
+	#Fail, because b_admin has no permission on aa_cat_id
+	get_category(b_admin_id, aa_cat_id, b_admin_token, False)
 
-user_three = {'category_permissions': {'ids': [], 'super': True},
- 'email': 'vikram.jindal@gmail.com',
- 'full_name': 'vikram jindal',
- 'password': '12345',
- 'region': ['kerela', 'maharashtra'],
- 'state': ['delhi', 'noida', "dwarka"],
- 'user_type': 'admin',
- 'username': 'vikram', 
- "category_permissions": {"ids": [], "super": True}}
+	##till now 3 categories created by a_admin_id, 
+	get_all_categories(a_admin_id, a_admin_token, 3)
 
+	##Todo Some funck with permissions
+
+	##Creating criteria by a_admin_id on aa_cat_id
+	aa_criteria_id = create_criteria(a_admin_id, aa_cat_id, a_admin_token, True)
+	ab_criteria_id = create_criteria(a_admin_id, aa_cat_id, a_admin_token, True)
+	ac_criteria_id = create_criteria(a_admin_id, aa_cat_id, a_admin_token, True)
+
+	##Try to create criteria by b_admin_id on aa_cat_id
+	create_criteria(b_admin_id, aa_cat_id, b_admin_token, False)
+
+	##get criteria by a_admin_id
+	get_module(a_admin_id, aa_criteria_id, "criteria", a_admin_token, True)
+
+	##get criteria by b_admin_id, created by a_admin_id
+	get_module(b_admin_id, aa_criteria_id, "criteria", a_admin_token, False)
 
 
-r = requests.post("http://localhost:8000/signup", data=json.dumps(user_one), headers=headers )
-pprint.pprint(r.json())
+	##get all criteria by a_admin_id
+	get_all_module(a_admin_id, "criterion", a_admin_token, 3)
 
-r = requests.post("http://localhost:8000/signup", data=json.dumps(user_two), headers=headers )
-pprint.pprint(r.json())
-
-r = requests.post("http://localhost:8000/signup", data=json.dumps(user_three), headers=headers )
-pprint.pprint(r.json())
+	##get all criteria by b_admin_id
+	print ("\n\n\n")
+	get_all_module(b_admin_id, "criterion", b_admin_token, 0)
 
 
+	#Creating sub criteria by a_admin_id
+	aa_sub_criteria_id = create_module(a_admin_id, aa_criteria_id, "subcriteria", "sub_criteria_name", a_admin_token, True)
+	ab_sub_criteria_id = create_module(a_admin_id, aa_criteria_id, "subcriteria", "sub_criteria_name", a_admin_token, True)
+	ac_sub_criteria_id = create_module(a_admin_id, aa_criteria_id, "subcriteria", "sub_criteria_name", a_admin_token, True)
 
-r = requests.post("http://localhost:8000/login", data=json.dumps(user_two), headers=headers )
-response_one= r.json()
-pprint.pprint(r.json())
-
-
-r = requests.post("http://localhost:8000/login", data=json.dumps(user_two), headers=headers )
-response_two = r.json()
-pprint.pprint(r.json())
-
-
-r = requests.post("http://localhost:8000/login", data=json.dumps(user_three), headers=headers )
-response_three = r.json()
-pprint.pprint(r.json())
-
-
-print ("\n\n")
-
-pprint.pprint(category_collection.find_one())
-pprint.pprint("FROM TEST: The user id %s doesnt have permission to create category" %(response_one["user_id"]))
-category_data = {"category_name": "test category one",
-				 "text_description": "This is a text description for test categry one", 
-				 "score": 20,
-				 "user_id": response_one["user_id"]
-				 }
-
-
-r = requests.post("http://localhost:8000/category", data=json.dumps(category_data), headers=headers)
-#response_three = r.json()
-pprint.pprint(r.json())
-
-
-print ("\n\n")
-print("checking is user with all permission can create a category or not")
-pprint.pprint("The user id %s [user_three]  have permission to create category" %(response_three["user_id"]))
-category_data["user_id"] = response_three["user_id"]
-r = requests.post("http://localhost:8000/category", data=json.dumps(category_data), headers=headers)
-response_category = r.json()
-pprint.pprint(r.json())
-
-
-user_four = {
- 'email': 'b@gmail.com',
- 'full_name': 'bb bb',
- 'password': '12345',
- 'region': ['kerela', 'maharashtra'],
- 'state': ['delhi', 'noida', "dwarka"],
- 'user_type': 'admin',
- 'username': 'bb', 
- }
-
-r = requests.post("http://localhost:8000/signup", data=json.dumps(user_four), headers=headers )
-r = requests.post("http://localhost:8000/login", data=json.dumps(user_four), headers=headers )
-response_four= r.json()
-pprint.pprint(r.json())
-
-
-print ("\n\n")
-print("Now providing permissions to user four by the user three to the above created category")
-pprint.pprint("The user id %s [user_three]  have permission to edit category" %(response_three["user_id"]))
-pprint.pprint("The user id %s [user_four]  is now being added to category permissions" %(response_four["user_id"]))
-
-category_data["user_id"] = response_three["user_id"]
-category_data["permissions"] = {"ids": [{"id": response_four["user_id"], 
-										"create": True, "get": True, "update": True, "delete": False}], "super": False}
-r = requests.put("http://localhost:8000/category/%s"%response_category['category_id'], data=json.dumps(category_data), headers=headers)
-#response_three = r.json()
-pprint.pprint(r.json())
-pprint.pprint(category_collection.find_one({"category_id": response_category["category_id"]}))
-
-
-print ("\n\n")
-print("Now User four with user_id %s does not have permissions to delete category"%response_four["user_id"])
-category_data["user_id"] = response_four["user_id"]
-r = requests.delete("http://localhost:8000/category/%s"%response_category['category_id'], data=json.dumps(category_data), headers=headers)
-#response_three = r.json()
-pprint.pprint(r.json())
-
-
-
-print ("\n\n")
-print("User four with user id [%s] have the get permission for this category"%response_four["user_id"])
-category_data["user_id"] = response_four["user_id"]
-r = requests.get("http://localhost:8000/category/%s"%response_category['category_id'], data=json.dumps(category_data), headers=headers)
-#response_three = r.json()
-pprint.pprint(r.json())
-
-"""
