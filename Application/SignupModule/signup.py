@@ -3,7 +3,7 @@ import tornado.web
 from tornado.escape import json_decode as TornadoJsonDecode
 from SettingsModule.settings  import user_collection_name, indian_time, jwt_secret, \
 									user_types, permissions, question_collection_name,\
-									category_collection_name, sub_category_collection_name, \
+									category_collection_name, criteria_collection_name, \
 									level_collection_name, default_document_limit
 from LoggingModule.logging import logger
 import time 
@@ -77,9 +77,6 @@ class Signup(tornado.web.RequestHandler):
 		self.db = self.settings["db"]
 		self.collection = self.db[user_collection_name]	
 		self.categorie_collection = self.db[category_collection_name]
-		self.level_collection = self.db[level_collection_name]
-		self.sub_category_collection = self.db[sub_category_collection_name]
-		self.question_collection = self.db[question_collection_name]
 
 
 	

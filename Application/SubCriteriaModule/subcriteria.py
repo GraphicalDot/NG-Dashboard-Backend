@@ -6,7 +6,7 @@
 from SettingsModule.settings import question_collection_name, default_document_limit,\
 									indian_time, permissions, category_collection_name,\
 									app_super_admin, app_super_admin_pwd, app_super_admin_user_id,\
-									user_collection_name, sub_category_collection_name, \
+									user_collection_name, criteria_collection_name, \
 									indian_time, sub_criteria_collection_name
 
 from AuthenticationModule.authentication import auth

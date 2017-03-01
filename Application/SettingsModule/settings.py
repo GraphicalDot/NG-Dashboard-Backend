@@ -15,7 +15,7 @@ superadmin_collection_name = "superadmin"
 evaluator_collection_name = "evaluators"
 question_collection_name = "questions"
 category_collection_name = "categories"
-sub_category_collection_name = "subcategories"
+criteria_collection_name = "criteria"
 
 sub_criteria_collection_name = "subcriteria"
 level_collection_name = "levels"

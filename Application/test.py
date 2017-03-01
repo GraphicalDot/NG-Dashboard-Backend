@@ -14,7 +14,7 @@ mongo_pwd = "1234Pacific###"
 mongo_ip = "localhost"
 mongo_port = 27017
 category_collection_name = "categories"
-sub_category_collection_name = "subcategories"
+criteria_collection_name = "criteria"
 level_collection_name = "levels"
 user_collection_name = "users"
 
@@ -27,7 +27,7 @@ db = client["tiapplication"]
 
 category_collection = db[category_collection_name]
 users_collection = db[user_collection_name]
-sub_category_collection = db[sub_category_collection_name]
+criteria_collection = db[criteria_collection_name]
 
 ##adding user_id=="superadmin" to categiry collection
 #db[user_collection_name].update_one({"name": "super_permissions"},  {"$addToSet": { "all": "superadmin"}}, upsert=True)
@@ -256,7 +256,7 @@ def create_category_by_superadmin(super_admin_user_id):
 
 def create_category_by_admin_one(admin_one_user_id, admin_one_token):
 	print ("\n\n")
-	cprint("Trying to create category by admin one", "green")
+	cprint("Trying to create category by admin one whose id is [%s]"%admin_one_user_id, "green")
 
 	category_data = {"category_name": "test category admin one",
 				 "text_description": "This is a text description for test categry one", 
@@ -358,7 +358,7 @@ def	adding_permissions_by_admin_one_for_admin_two(admin_one_user_id, admin_two_u
 
 
 	cprint("Checking permissions with mongoDB whether the persmissions are updated or not", "green")
-	category = category_collection.find_one({"category_id": category_id_by_admin_one})
+	category = category_collection.find_one({"module_id": category_id_by_admin_one})
 	permission_object.pop("user_id")
 	
 	if category[admin_two_user_id] == permission_object:
@@ -370,35 +370,35 @@ def	adding_permissions_by_admin_one_for_admin_two(admin_one_user_id, admin_two_u
 ##Now admin_one created a category, Then admin one added permissions for admin_two on this category
 
 
-def	create_sub_category_by_admin_two(admin_two_user_id, admin_two_token, category_id):
+def	create_criteria_by_admin_two(admin_two_user_id, admin_two_token, category_id):
 	print ("\n\n")
-	cprint("Trying to create sub category by admin Two", "green")
-	cprint("This sub category must be created as admin Two [%s] has create permissions on %s"%(admin_two_user_id, category_id),  "green")
+	cprint("Trying to create criteria by admin Two", "green")
+	cprint("This criteria must be created as admin Two [%s] has create permissions on %s"%(admin_two_user_id, category_id),  "green")
 
-	category_data = {"sub_category_name": "subcategory_one_admin_two",
+	category_data = {"criteria_name": "criteria_one_admin_two",
 				 "text_description": "Description for subcategory_one_admin_two", 
 				 "score": 30,
 				 "user_id": admin_two_user_id,
-				 "category_id": category_id
+				 "parent_id": category_id
 				 }
-	r = requests.post("http://localhost:8000/subcategory", data=json.dumps(category_data), headers={"Authorization": question_uploader_token})
+	r = requests.post("http://localhost:8000/criteria", data=json.dumps(category_data), headers={"Authorization": question_uploader_token})
 	cprint( "\t\t%s"%r.json(), "blue")
 
-	sub_category_id = r.json()["sub_category_id"]
-	if r.json()['category_id'] != category_id:
+	sub_category_id = r.json()["module_id"]
+	if r.json()['parent_id'] != category_id:
 		cprint("\t\tTest Failed", "red", "on_white")
 	else:
 			cprint("\t\tTest Passed", "green", "on_white")
 	
 	cprint("\t\tChecking mongodb Entry for this new update in subcategory collection")
-	if sub_category_collection.find_one({"sub_category_id": sub_category_id})[admin_two_user_id] == \
+	if criteria_collection.find_one({"module_id": sub_category_id})[admin_two_user_id] == \
 													{"create": True, "get": True, "delete": True, "update": True}:
 			cprint("\t\tTest Passed", "green", "on_white")
 	else:
 			cprint("\t\tTest Passed", "green", "on_white")
 	
 	cprint("\t\t Checking user[%s] in user_collection for subcategory[%s] permission"%(admin_two_user_id, sub_category_id))
-	if users_collection.find_one({"user_id": admin_two_user_id})["permissions"]["sub_category"][sub_category_id] ==\
+	if users_collection.find_one({"user_id": admin_two_user_id})["permissions"]["criteria"][sub_category_id] ==\
 					 {"create": True, "get": True, "delete": True, "update": True}:
 			cprint("\t\tTest Passed", "green", "on_white")
 	else:
@@ -406,17 +406,17 @@ def	create_sub_category_by_admin_two(admin_two_user_id, admin_two_token, categor
 					 
 
 
-	return r.json()["sub_category_id"]
+	return r.json()["module_id"]
 
 
-def get_sub_category_admin_one(sub_category_id_admin_two, admin_one_user_id, admin_one_token):
+def get_criteria_admin_one(sub_category_id_admin_two, admin_one_user_id, admin_one_token):
 	print ("\n\n")
-	cprint("Trying to get sub category [%s] by admin Two by admin one"%(sub_category_id_admin_two), "green")
+	cprint("Trying to get criteria [%s] by admin Two by admin one"%(sub_category_id_admin_two), "green")
 	cprint("Must Fail because this category has been created by admin two")
 	cprint("All other rest requests follows the same ")
 
 
-	r = requests.get("http://localhost:8000/subcategory/%s"%sub_category_id_admin_two, data=json.dumps({"user_id": admin_one_user_id}),\
+	r = requests.get("http://localhost:8000/criteria/%s"%sub_category_id_admin_two, data=json.dumps({"user_id": admin_one_user_id}),\
 	 headers={"Authorization": admin_one_token})
 	cprint(r.json(), "blue")
 	"""
@@ -426,28 +426,33 @@ def get_sub_category_admin_one(sub_category_id_admin_two, admin_one_user_id, adm
 			cprint("Test Passed", "green", "on_white")
 	"""	
 
-	if r.json()['message'] != "The subcategory with id[%s] doest have permissions for user_id [%s]"%(sub_category_id_admin_two, admin_one_user_id):
+	if r.json()['message'] != "The document with id[%s] doest have permissions for user_id [%s]"%(sub_category_id_admin_two, admin_one_user_id):
 		cprint("\t\tTest Failed", "red", "on_white")
 	else:
-			cprint("\t\tTest Passed", "green", "on_white")
+		cprint("\t\tTest Passed", "green", "on_white")
 	return 
 
 
-def update_permission_for_question_uploader(sub_category_id_admin_two, question_uploader_id,\
+def update_criteria_permission_for_question_uploader(sub_category_id_admin_two, question_uploader_id,\
 					admin_two_user_id, admin_two_token):
 	print ("\n\n")
-	cprint("Update Permission on sub category [%s] by admin_one [%s] who created\
+	cprint("Update Permission on criteria [%s] by admin_one [%s] who created\
 	 this subcategory for the question_uploader_id [%s]"%(sub_category_id_admin_two, \
 	 	admin_two_user_id, question_uploader_id), "green")
 	cprint("Must pass")
 	permission_object = [{"user_id": admin_one_user_id , "create": True, "delete": False, "get": True, "put": True}]
-	data_object = {"sub_category_id": sub_category_id_admin_two, "user_id": admin_two_user_id, \
+	data_object = {"module_id": sub_category_id_admin_two, "user_id": admin_two_user_id, \
 	"permissions": permission_object}
 
-	r = requests.post("http://localhost:8000/subcategorypermissions", data=json.dumps(data_object),\
+	r = requests.post("http://localhost:8000/criteriapermissions", data=json.dumps(data_object),\
 	 headers={"Authorization": admin_two_token})
 
 	cprint(r.json(), "blue")
+	if not r.json()["success"]:
+		cprint("\t\tTest Failed", "red", "on_white")
+	else:
+		cprint("\t\tTest Passed", "green", "on_white")
+	return 
 
 
 
@@ -481,15 +486,16 @@ if __name__ == "__main__":
 	create_category_by_superadmin(super_admin_user_id)
 	create_category_by_question_uploader(question_uploader_id, question_uploader_token)
 	category_id_by_admin_one = create_category_by_admin_one(admin_one_user_id, admin_one_token)
+
 	get_category_by_admin_two(admin_one_user_id, admin_one_token, category_id_by_admin_one)
 	change_permissions_by_admin_two(admin_two_user_id, admin_two_token, category_id_by_admin_one)
 	adding_permissions_by_admin_one_for_admin_two(admin_one_user_id, admin_two_user_id, admin_one_token, category_id_by_admin_one)
-	sub_category_id_admin_two = create_sub_category_by_admin_two(admin_two_user_id, admin_two_token, category_id_by_admin_one)
+	sub_category_id_admin_two = create_criteria_by_admin_two(admin_two_user_id, admin_two_token, category_id_by_admin_one)
 
-	get_sub_category_admin_one(sub_category_id_admin_two, admin_one_user_id, admin_one_token)
+	get_criteria_admin_one(sub_category_id_admin_two, admin_one_user_id, admin_one_token)
 
 
-	update_permission_for_question_uploader(sub_category_id_admin_two, question_uploader_id,\
+	update_criteria_permission_for_question_uploader(sub_category_id_admin_two, question_uploader_id,\
 					admin_two_user_id, admin_two_token)
 
 """

@@ -63,7 +63,7 @@ def if_module_permission(category_name, collection, user_id, rest_parameter, cat
 		rest_parameter: "get", "put", "create", "delete"
 
 	"""
-	user_permission = yield collection.find_one({"category_id": category_id}, \
+	user_permission = yield collection.find_one({"module_id": category_id}, \
 		projection={"_id": False, user_id: True})
 	logger.info(user_permission)
 
@@ -120,7 +120,7 @@ class CategoryPermissions(tornado.web.RequestHandler):
 
 			for permission_obj in permissions:
 					user_id = permission_obj.pop("user_id")
-					update_category_collection = yield self.category_collection.update_one({"category_id": category_id}, \
+					update_category_collection = yield self.category_collection.update_one({"module_id": category_id}, \
 						{"$set": {user_id: permission_obj}}, upsert=True)
 					logger.info(update_category_collection.modified_count)
 
@@ -314,23 +314,23 @@ class Category(tornado.web.RequestHandler):
 			try:
 					yield check_if_super(category_name, self.user_collection, self.category_collection, user_id, "post", None)
 
-					category = yield self.category_collection.find_one({"category_name": category_name})
+					category = yield self.category_collection.find_one({"module_name": category_name})
 					if category:
 						raise Exception("%s category already exists"%(category_name))
 
 					category_hash = "%s%s"%(user_id, category_name)
 
 					category_id = hashlib.sha1(category_hash.encode("utf-8")).hexdigest()
-					category = yield self.category_collection.insert_one({"category_id": category_id, "category_name": category_name, 
+					category = yield self.category_collection.insert_one({"module_id": category_id, "module_name": category_name, 
 							"user_id": user_id, "score": score, "text_description": text_description, 
-							"utc_epoch": time.time(), "indian_time": indian_time()})
+							"utc_epoch": time.time(), "indian_time": indian_time(), "parents": []})
 					logger.info("New category with name %s and _id=%s created by user id [%s]"%(category_name, category.inserted_id, user_id))
 
 
 					permission = {"create": True, "delete": True, "update": True, "get": True}
 					##this will add the creator id crud operation permission to this category
 
-					update_category_collection = yield self.category_collection.update_one({"category_id": category_id}, \
+					update_category_collection = yield self.category_collection.update_one({"module_id": category_id}, \
 											{"$set": {user_id: permission}}, upsert=True)
 
 					update_user_collection = yield self.user_collection.update_one({"user_id": user_id}, \
@@ -357,7 +357,7 @@ class Category(tornado.web.RequestHandler):
 			#user_permission = yield self.collection.find_one({"name": "super_permissions", "all": {"$in": [user_id]}}, projection={"_id": True})
 			try:
 				yield check_if_super(None, self.user_collection, self.category_collection, user_id, "get", None)
-				category = yield self.category_collection.find_one({"category_id": category_id}, projection={"_id": False})
+				category = yield self.category_collection.find_one({"module_id": category_id}, projection={"_id": False})
 			except Exception as e:
 				print (traceback.format_exc())
 				logger.error(e)
@@ -384,7 +384,7 @@ class Category(tornado.web.RequestHandler):
 			try:
 					yield check_if_super(None, self.user_collection, self.category_collection, user_id, "put", None)
 
-					self.collection.update_one({"category_id": category_id}, {"$set":{"text_description": text_description,\
+					self.collection.update_one({"module_id": category_id}, {"$set":{"text_description": text_description,\
 						"score": score}}, upsert=False)					
 
 			except Exception as e:
@@ -410,6 +410,7 @@ class Category(tornado.web.RequestHandler):
 			user_id = post_arguments.get("user_id", None) ##who created this category
 			try:
 				yield check_if_super(None, self.user_collection, self.category_collection, user_id, "delete", None)				
+				self.category_collection.delete_one({"module_id": category_id})
 			except Exception as e:
 				print (traceback.format_exc())
 				logger.error(e)
