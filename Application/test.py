@@ -361,7 +361,7 @@ def	adding_permissions_by_admin_one_for_admin_two(admin_one_user_id, admin_two_u
 	category = category_collection.find_one({"module_id": category_id_by_admin_one})
 	permission_object.pop("user_id")
 	
-	if category[admin_two_user_id] == permission_object:
+	if category["user_permissions"][admin_two_user_id] == permission_object:
 			cprint("Test Passed", "green", "on_white")
 
 
@@ -391,7 +391,7 @@ def	create_criteria_by_admin_two(admin_two_user_id, admin_two_token, category_id
 			cprint("\t\tTest Passed", "green", "on_white")
 	
 	cprint("\t\tChecking mongodb Entry for this new update in subcategory collection")
-	if criteria_collection.find_one({"module_id": sub_category_id})[admin_two_user_id] == \
+	if criteria_collection.find_one({"module_id": sub_category_id})["user_permissions"][admin_two_user_id] == \
 													{"create": True, "get": True, "delete": True, "update": True}:
 			cprint("\t\tTest Passed", "green", "on_white")
 	else:

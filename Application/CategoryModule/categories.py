@@ -64,12 +64,12 @@ def if_module_permission(category_name, collection, user_id, rest_parameter, cat
 
 	"""
 	user_permission = yield collection.find_one({"module_id": category_id}, \
-		projection={"_id": False, user_id: True})
+		projection={"_id": False, "user_permissions": True})
 	logger.info(user_permission)
 
 
 	try:
-		if user_permission[user_id][rest_parameter]:
+		if user_permission["user_permissions"][user_id][rest_parameter]:
 			logger.info("The user_id [%s] has [%s] permissions for this category [%s]"%(user_id, rest_parameter, category_id))
 			return True
 	except Exception:
@@ -121,7 +121,7 @@ class CategoryPermissions(tornado.web.RequestHandler):
 			for permission_obj in permissions:
 					user_id = permission_obj.pop("user_id")
 					update_category_collection = yield self.category_collection.update_one({"module_id": category_id}, \
-						{"$set": {user_id: permission_obj}}, upsert=True)
+						{"$set": {"user_permissions.%s"%user_id: permission_obj}}, upsert=True)
 					logger.info(update_category_collection.modified_count)
 
 					update_user_collection = yield self.user_collection.update_one({"user_id": user_id}, \
@@ -331,7 +331,7 @@ class Category(tornado.web.RequestHandler):
 					##this will add the creator id crud operation permission to this category
 
 					update_category_collection = yield self.category_collection.update_one({"module_id": category_id}, \
-											{"$set": {user_id: permission}}, upsert=True)
+											{"$set": {"user_permissions.%s"%user_id: permission}}, upsert=True)
 
 					update_user_collection = yield self.user_collection.update_one({"user_id": user_id}, \
 						{"$set": {"permissions.category.%s"%category_id: permission}}, upsert=False)

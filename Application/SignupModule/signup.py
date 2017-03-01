@@ -116,6 +116,7 @@ class Signup(tornado.web.RequestHandler):
 		##For the user other 
 		is_superadmin = post_arguments.get("is_superadmin", False) #handle this
 		parent_user_id = post_arguments.get("parent_user_id", None) ## Which implies a superadmin
+		deactivate = post_arguments.get("deactivate", None)
 
 		
 		logger.info("user_type=%s, full_name=%s, user_email=%s, username=%s, \
@@ -170,7 +171,7 @@ class Signup(tornado.web.RequestHandler):
 
 
 							  "email": email, "profile_pic": profile_pic, "utc_epoch": time.time(), "indian_time": indian_time(), "user_id": user_id, 
-							  "is_superadmin": is_superadmin, "parent_user_id": parent_user_id })
+							  "is_superadmin": is_superadmin, "parent_user_id": parent_user_id, "deactivate": deactivate})
 
 			logger.info("User added at %s with user_id %s"%(indian_time(), user_id))
 			
@@ -242,7 +243,7 @@ class Signup(tornado.web.RequestHandler):
 		else:
 				message = {"error": True, "success": False, "message": "User doesnt exist"}
 
-
+		#TODO: delete all parmissions as well
 		self.write(message)
 		self.finish()
 		return

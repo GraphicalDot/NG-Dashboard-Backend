@@ -18,8 +18,9 @@ import hashlib
 import json
 import traceback
 import time 
+import uuid
 @coroutine
-def if_create_permissions(user_collection, parent_collection, child_collection, \
+def if_create_permissions(user_collection, parent_collection, module_collection, \
 													user_id, rest_parameter, parent_id):
 	"""
 	If a user want to create a SubCategory
@@ -43,7 +44,7 @@ def if_create_permissions(user_collection, parent_collection, child_collection, 
 			return parent 
 
 	logger.info(parent)
-	if not parent.get(user_id, None):
+	if not parent.get("user_permissions").get(user_id, None):
 			raise Exception("The userid= [%s] doesnt have permissions to create children on \
 				parent with parent_id=[%s]"%(user_id, parent_id))
 
@@ -51,7 +52,7 @@ def if_create_permissions(user_collection, parent_collection, child_collection, 
 
 	##We dont have to check for get permissions has the userid cant see it, unless have
 	##get permission on this subcategory
-	if not parent.get(user_id).get(rest_parameter, None):
+	if not parent.get("user_permissions").get(user_id).get(rest_parameter, None):
 			raise Exception("The userid= [%s] doesnt have %s permissions to on parent  \
 				with parent id=[%s] doesnt exists"%(user_id, rest_parameter, parent_id))
 
@@ -72,15 +73,15 @@ def if_module_permission(collection, user_id, rest_parameter, module_id):
 
 	"""
 	document = yield collection.find_one({"module_id": module_id}, \
-									projection={"_id": False, user_id: True, "module_id": True})
+									projection={"_id": False, "user_permissions": True, "module_id": True})
 	if not document:
 		raise Exception("The document with id[%s] doesnt exists"%(module_id))
 
-	if not document.get(user_id, None):
+	if not document["user_permissions"].get(user_id, None):
 		raise Exception("The document with id[%s] doest have permissions for user_id [%s]"%(module_id, user_id))
 
 	try:
-		if document[user_id][rest_parameter]:
+		if document["user_permissions"][user_id][rest_parameter]:
 			logger.info("The user_id [%s] has [%s] permissions for this document [%s]"%(user_id, rest_parameter, module_id))
 			return True
 	except Exception:
@@ -91,12 +92,26 @@ def if_module_permission(collection, user_id, rest_parameter, module_id):
 
 
 
+@coroutine
+def delete_children(db, children, child_collection_name):
+	collection = db[child_collection_name]
+	for child_id in children:
+		child = yield collection.find_one({"module_id": child_id})
+		yield collection.delete_one({"module_id": child_id})
+		child_children = child["children"]
+		child_child_collection_name = child["child_collection_name"]
+		delete_children(db, child_children, child_child_collection_name)
+
+	return False
+
+
+
 class GenericPermissions(tornado.web.RequestHandler):
 	def initialize(self):
 		self.db = self.settings["db"]
 		self.user_collection = self.db[user_collection_name]
 		self.parent_collection = self.db[sub_criteria_collection_name]
-		self.child_collection = self.db[level_collection_name]
+		self.module_collection = self.db[level_collection_name]
 		self.document_id = "level_id"
 		self.document_name = "level"
 
@@ -128,14 +143,14 @@ class GenericPermissions(tornado.web.RequestHandler):
 
 			##rest_paramter is "create", because only the admin who have create permission on this category 
 			##will have the right to change admin for this particular category
-			yield if_module_permission(self.child_collection, user_id, "create", module_id)
+			yield if_module_permission(self.module_collection, user_id, "create", module_id)
 			
 			logger.info("The user [%s] have create permission on %s [%s]"%(user_id, self.document_id, module_id))
 
 			for permission_obj in permissions:
 					user_id = permission_obj.pop("user_id")
-					update_module_collection = yield self.child_collection.update_one({"module_id": module_id}, \
-						{"$set": {user_id: permission_obj}}, upsert=True)
+					update_module_collection = yield self.module_collection.update_one({"module_id": module_id}, \
+						{"$set": {"user_permissions.%s"%user_id: permission_obj}}, upsert=True)
 					logger.info(update_module_collection.modified_count)
 
 					update_user_collection = yield self.user_collection.update_one({"user_id": user_id}, \
@@ -144,6 +159,7 @@ class GenericPermissions(tornado.web.RequestHandler):
 
 
 		except Exception as e:
+			print (traceback.format_exc())
 			logger.error(e)
 			self.write({"error": True, "success": False, "message": e.__str__()})
 			self.finish()
@@ -164,9 +180,11 @@ class Generic(tornado.web.RequestHandler):
 		self.db = None
 		self.user_collection = None
 		self.parent_collection = None
-		self.child_collection = None
+		self.module_collection = None
 		self.document_id = "sub_category_id"
 		self.document_name = "sub_category"
+		self.child_collection = None
+		self.child_collection_name = None
 
 
 	@asynchronous
@@ -187,10 +205,10 @@ class Generic(tornado.web.RequestHandler):
 			try:
 					##name of the parent category, subcategory. subcriteria etc
 					parent_document = yield if_create_permissions(self.user_collection, \
-						self.parent_collection, self.child_collection, user_id, "create", parent_id)
+						self.parent_collection, self.module_collection, user_id, "create", parent_id)
 
 
-					module_document = yield self.child_collection.find_one({self.document_name: module_name})
+					module_document = yield self.module_collection.find_one({self.document_name: module_name})
 
 					if module_document:
 						raise Exception("%s on %s module already exists"%(module_name, self.document_name))
@@ -199,15 +217,19 @@ class Generic(tornado.web.RequestHandler):
 
 					module_id = hashlib.sha1(module_hash.encode("utf-8")).hexdigest()
 					
-
 					parent_document["parents"].append({"name": parent_document["module_name"], "id": parent_document["module_id"] })
 					logger.info(parent_document["parents"])
-					result = yield self.child_collection.insert_one({"module_id": module_id, \
+					result = yield self.module_collection.insert_one({"module_id": module_id, \
 																			"module_name": module_name,
 																			"module_type": self.document_name,
+																			"parent_id": parent_id,
 																			"parents": parent_document["parents"], 
+																			"child_collection_name": self.child_collection_name,
 							"user_id": user_id, "score": score, "text_description": text_description, 
 							"utc_epoch": time.time(), "indian_time": indian_time()})
+
+					self.parent_collection.update({"module_id": parent_id}, {"$addToSet": {"children": module_id}}, upsert=False)
+
 					logger.info("New [%s] with name=[%s], _id=[%s] and module_id=[%s] created by user id [%s]"%(self.document_name, module_name,\
 					 result.inserted_id, module_id, user_id))
 
@@ -215,8 +237,8 @@ class Generic(tornado.web.RequestHandler):
 					permission = {"create": True, "delete": True, "update": True, "get": True}
 					##this will add the creator id crud operation permission to this category
 
-					update_child_collection = yield self.child_collection.update_one({"module_id": module_id}, \
-											{"$set": {user_id: permission}}, upsert=False)
+					update_module_collection = yield self.module_collection.update_one({"module_id": module_id}, \
+											{"$set": {"user_permissions.%s"%user_id: permission}}, upsert=False)
 
 					update_user_collection = yield self.user_collection.update_one({"user_id": user_id}, \
 						{"$set": {"permissions.%s.%s"%(self.document_name, module_id): permission}}, upsert=False)
@@ -245,9 +267,9 @@ class Generic(tornado.web.RequestHandler):
 			##get permission on the subcategory
 			#user_permission = yield self.collection.find_one({"name": "super_permissions", "all": {"$in": [user_id]}}, projection={"_id": True})
 			try:
-				yield if_module_permission(self.child_collection, user_id, "get", module_id)
+				yield if_module_permission(self.module_collection, user_id, "get", module_id)
 
-				result = yield self.child_collection.find_one({"module_id": module_id}, projection={"_id": False, 
+				result = yield self.module_collection.find_one({"module_id": module_id}, projection={"_id": False, 
 						"text_description": True, "score": True, self.document_name: True})
 			except Exception as e:
 				print (traceback.format_exc())
@@ -273,9 +295,9 @@ class Generic(tornado.web.RequestHandler):
 			score = post_arguments.get("score", None)
 			user_id = post_arguments.get("user_id", None) ##who created this category
 			try:
-				yield if_module_permission(self.child_collection, user_id, "put", module_id)
+				yield if_module_permission(self.module_collection, user_id, "put", module_id)
 
-				self.child_collection.update_one({"module_id": module_id}, {"$set":{"text_description": text_description,\
+				self.module_collection.update_one({"module_id": module_id}, {"$set":{"text_description": text_description,\
 						"score": score}}, upsert=False)					
 
 			except Exception as e:
@@ -296,7 +318,14 @@ class Generic(tornado.web.RequestHandler):
 			post_arguments = json.loads(self.request.body.decode("utf-8"))
 			user_id = post_arguments.get("user_id", None) ##who created this category
 			try:
-				yield if_module_permission(self.child_collection, user_id, "delete", module_id)
+				yield if_module_permission(self.module_collection, user_id, "delete", module_id)
+				module = yield self.module_collection.find_one({"module_id": module_id})
+				children = module["children"]
+				child_collection_name = module["child_collection_name"]
+				yield self.module_collection.delete_one({"module_id": module_id})
+				while True:
+					delete_children(self.db, children, child_collection_name)
+
 
 				##TODO, Delet this category and all its children and children
 			except Exception as e:
@@ -314,9 +343,9 @@ class Generic(tornado.web.RequestHandler):
 class Generics(tornado.web.RequestHandler):
 
 	def initialize(self):
-		self.db = self.settings["db"]
-		self.user_collection = self.db[user_collection_name]
-		self.child_collection = self.db[child_collection_name]
+		self.db = None
+		self.user_collection = None
+		self.module_collection = None
 		self.document_id = "level_id"
 		self.document_name = "level"
 
@@ -331,7 +360,7 @@ class Generics(tornado.web.RequestHandler):
 		limit = post_arguments.get("limit", 10)
 		skip = post_arguments.get("skip", 0)
 		try:
-			result = yield self.child_collection.find({self.document_id: module_id, \
+			result = yield self.module_collection.find({self.document_id: module_id, \
 				"%s.%s"%(user_id, "get"): True}, projection={"_id": False}).\
 					skip(skip).sort([('indian_time', -1)]).to_list(length=limit)
 		except Exception as e:
