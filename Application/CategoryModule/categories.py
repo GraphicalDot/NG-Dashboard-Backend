@@ -3,7 +3,7 @@
 from SettingsModule.settings import question_collection_name, default_document_limit,\
 									indian_time, permissions, category_collection_name,\
 									app_super_admin, app_super_admin_pwd, app_super_admin_user_id,\
-									user_collection_name, indian_time
+									user_collection_name, indian_time, criteria_collection_name
 
 from AuthenticationModule.authentication import auth
 from tornado.web import asynchronous
@@ -14,6 +14,7 @@ import hashlib
 import json
 import traceback
 import time 
+from GenericModule.generic import delete_children
 
 @coroutine
 def check_if_super(category_name, user_collection, category_collection, user_id, rest_parameter, category_id=None):
@@ -153,6 +154,7 @@ class Category(tornado.web.RequestHandler):
 		self.db = self.settings["db"]
 		self.category_collection = self.db[category_collection_name]	
 		self.user_collection = self.db[user_collection_name]
+		self.child_collection_name = criteria_collection_name
 
 	@asynchronous
 	@coroutine
@@ -324,7 +326,8 @@ class Category(tornado.web.RequestHandler):
 					category_id = hashlib.sha1(category_hash.encode("utf-8")).hexdigest()
 					category = yield self.category_collection.insert_one({"module_id": category_id, "module_name": category_name, 
 							"user_id": user_id, "score": score, "text_description": text_description, 
-							"utc_epoch": time.time(), "indian_time": indian_time(), "parents": []})
+							"utc_epoch": time.time(), "indian_time": indian_time(), "parents": [], \
+							"module_type": "category", "children": [], "child_collection_name": self.child_collection_name})
 					logger.info("New category with name %s and _id=%s created by user id [%s]"%(category_name, category.inserted_id, user_id))
 
 
@@ -359,6 +362,7 @@ class Category(tornado.web.RequestHandler):
 			try:
 				yield check_if_super(None, self.user_collection, self.category_collection, user_id, "get", category_id)
 				category = yield self.category_collection.find_one({"module_id": category_id}, projection={"_id": False})
+
 			except Exception as e:
 				print (traceback.format_exc())
 				logger.error(e)
@@ -411,7 +415,17 @@ class Category(tornado.web.RequestHandler):
 			user_id = post_arguments.get("user_id", None) ##who created this category
 			try:
 				yield check_if_super(None, self.user_collection, self.category_collection, user_id, "delete", category_id)				
-				self.category_collection.delete_one({"module_id": category_id})
+
+				module = yield self.category_collection.find_one({"module_id": category_id})
+				children = module["children"]
+				child_collection_name = module["child_collection_name"]
+				
+				yield self.category_collection.delete_one({"module_id": category_id})
+				
+				if child_collection_name:
+					yield delete_children(self.db, children, child_collection_name)
+
+
 			except Exception as e:
 				print (traceback.format_exc())
 				logger.error(e)

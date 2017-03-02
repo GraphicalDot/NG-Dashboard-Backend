@@ -26,6 +26,7 @@ import time
 class SubCriteriaPermissions(GenericPermissions):
 	def initialize(self):
 		self.db = self.settings["db"]
+		self.parent_collection_name = criteria_collection_name
 		self.parent_collection = self.db[criteria_collection_name]	
 		self.user_collection = self.db[user_collection_name]
 		self.module_collection = self.db[sub_criteria_collection_name]
@@ -39,6 +40,7 @@ class SubCriteriaPermissions(GenericPermissions):
 class SubCriteria(Generic):
 	def initialize(self):
 		self.db = self.settings["db"]
+		self.parent_collection_name = criteria_collection_name
 		self.parent_collection = self.db[criteria_collection_name]	
 		self.user_collection = self.db[user_collection_name]
 		self.module_collection = self.db[sub_criteria_collection_name]

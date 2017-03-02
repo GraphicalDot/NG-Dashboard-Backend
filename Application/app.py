@@ -28,6 +28,8 @@ from CategoryModule.categories import Category, Categories, CategoryPermissions
 from CriteriaModule.criteria import Criteria, Criterion, CriteriaPermissions
 from SubCriteriaModule.subcriteria import SubCriteria, SubCriterions, SubCriteriaPermissions
 from LevelModule.levels import Level, Levels, LevelPermissions
+from QuestionsModule.questions import Question, Questions, QuestionPermissions
+
 app_urls = [
 			(r"/login", Login),
 			(r"/signup$", Signup),
@@ -62,6 +64,11 @@ app_urls = [
             (r"/level/([a-zA-Z0-9_.-]*$)", Level),
             (r"/levelpermissions$", LevelPermissions),
 			
+            (r"/question$", Question),
+            (r"/questions$", Questions),
+            (r"/question/([a-zA-Z0-9_.-]*$)", Question),
+            (r"/questionpermissions$", QuestionPermissions),
+
 			]
 
 

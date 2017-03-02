@@ -549,7 +549,7 @@ def get_all_module(user_id, module_name, token, length):
 	return 
 
 
-def	create_module(user_id, parent_id, module_api, module_name, token, success):
+def	create_module(user_id, parent_id, module_api, module_name, token, success, documents_required=None):
 
 	data = {module_name: fake.slug(),
 					"parent_id": parent_id, 
@@ -557,6 +557,10 @@ def	create_module(user_id, parent_id, module_api, module_name, token, success):
 				 "score": random.randint(0, 100),
 				 "user_id": user_id
 				 }
+
+	if documents_required:
+			data.update({"documents_required": documents_required})
+			print(data)
 	r = requests.post("http://localhost:8000/%s"%module_api, data=json.dumps(data), headers={"Authorization": token})
 	print ("\n\n")
 	cprint(r.json(), "blue")
@@ -584,10 +588,20 @@ def get_all_categories(user_id, token, length):
 		cprint("\t\tTest Failed", "red", "on_white")
 	return 
 
+def delete_module(user_id, module_api, module_id,  token, success):
+	data = {"user_id": user_id}
+	r = requests.delete("http://localhost:8000/%s/%s"%(module_api, module_id),  data=json.dumps(data), headers={"Authorization": token})
+	cprint(r.json(), "blue")
+	if r.json()["success"] == success:
+		cprint("\t\tTest Passed", "green", "on_white")
+	else:
+		cprint("\t\tTest Failed", "red", "on_white")
+
 
 
 if __name__ == "__main__":
 	insert_super_admin()
+
 	(admin_one_user_id, admin_one_token) = create_admin_one()
 	check_if_login_provides_same_token(admin_one_token)
 
@@ -598,16 +612,10 @@ if __name__ == "__main__":
 
 	(question_uploader_id, question_uploader_token) = create_user_first(admin_one_user_id, admin_one_token)
 	create_user_second(admin_one_user_id, admin_one_token)
-	for user in db[user_collection_name].find():
-		pprint.pprint (user)
-		print("\n\n")
-
-	for user in db[category_collection_name].find():
-		pprint.pprint (user)
-		print("\n\n")
 
 
 	users_by_admin(admin_one_user_id, admin_one_token)
+	"""
 	create_category_by_superadmin(super_admin_user_id)
 	create_category_by_question_uploader(question_uploader_id, question_uploader_token)
 	category_id_by_admin_one = create_category_by_admin_one(admin_one_user_id, admin_one_token)
@@ -623,12 +631,13 @@ if __name__ == "__main__":
 	update_criteria_permission_for_question_uploader(sub_category_id_admin_two, question_uploader_id,\
 					admin_two_user_id, admin_two_token)
 
-
+	"""
 	a_admin_id, a_admin_token = create_admin(super_admin_user_id)
 	b_admin_id, b_admin_token = create_admin(super_admin_user_id)
 	c_admin_id, c_admin_token = create_admin(super_admin_user_id)
 	
 	aa_cat_id = create_category(a_admin_id, a_admin_token)
+	"""
 	ab_cat_id = create_category(a_admin_id, a_admin_token)
 	ac_cat_id = create_category(a_admin_id, a_admin_token)
 
@@ -646,9 +655,11 @@ if __name__ == "__main__":
 	get_all_categories(a_admin_id, a_admin_token, 3)
 
 	##Todo Some funck with permissions
-
+	"""
 	##Creating criteria by a_admin_id on aa_cat_id
 	aa_criteria_id = create_criteria(a_admin_id, aa_cat_id, a_admin_token, True)
+	
+	"""
 	ab_criteria_id = create_criteria(a_admin_id, aa_cat_id, a_admin_token, True)
 	ac_criteria_id = create_criteria(a_admin_id, aa_cat_id, a_admin_token, True)
 
@@ -668,10 +679,55 @@ if __name__ == "__main__":
 	##get all criteria by b_admin_id
 	print ("\n\n\n")
 	get_all_module(b_admin_id, "criterion", b_admin_token, 0)
-
+	"""
 
 	#Creating sub criteria by a_admin_id
 	aa_sub_criteria_id = create_module(a_admin_id, aa_criteria_id, "subcriteria", "sub_criteria_name", a_admin_token, True)
 	ab_sub_criteria_id = create_module(a_admin_id, aa_criteria_id, "subcriteria", "sub_criteria_name", a_admin_token, True)
 	ac_sub_criteria_id = create_module(a_admin_id, aa_criteria_id, "subcriteria", "sub_criteria_name", a_admin_token, True)
+
+
+	"""
+	#Creating sub criteria by b_admin_id, They all going to fail because b_admin_id doesnt have an permission on parent 
+	##category aa_criteria_id which was created by a_admin_id
+	ba_sub_criteria_id = create_module(b_admin_id, aa_criteria_id, "subcriteria", "sub_criteria_name", b_admin_token, False, )
+	bb_sub_criteria_id = create_module(b_admin_id, ab_criteria_id, "subcriteria", "sub_criteria_name", b_admin_token, False)
+	bc_sub_criteria_id = create_module(b_admin_id, ac_criteria_id, "subcriteria", "sub_criteria_name", b_admin_token, False)
+	"""
+
+
+
+
+	##CReate LEVELS
+	aa_level_id = create_module(a_admin_id, aa_sub_criteria_id, "level", "level_name", a_admin_token, True)
+	ab_level_id = create_module(a_admin_id, aa_sub_criteria_id, "level", "level_name", a_admin_token, True)
+	ac_level_id = create_module(a_admin_id, aa_sub_criteria_id, "level", "level_name", a_admin_token, True)
+
+
+	##CReate Questions
+	aa_question_id = create_module(a_admin_id, aa_level_id, "question", "question_name", a_admin_token, True, ["address_proof"])
+	ab_question_id = create_module(a_admin_id, aa_level_id, "question", "question_name", a_admin_token, True, ["address_proof", "incomme_tax_statement"])
+	ac_question_id = create_module(a_admin_id, aa_level_id, "question", "question_name", a_admin_token, True, ["address_proof", "id_proof"])
+	ad_question_id = create_module(a_admin_id, aa_level_id, "question", "question_name", a_admin_token, True, ["address_proof", "id_proof"])
+	ad_question_id = create_module(a_admin_id, aa_level_id, "question", "question_name", a_admin_token, True, ["address_proof", "id_proof"])
+
+
+
+	#Delete Tests 
+	##ideally when we delete a question, level, criteria, sub_criteria it shall delet the 
+	##the module itself and all its categories
+	##first lets try to delete any question created above by b_admin_id, who didnt create a question
+	## This endeavour shall fail as b_admin_id doesnt have permission on this question
+	delete_module(b_admin_id, "question", aa_question_id, b_admin_token, False)
+
+	##Now trying to delete the aa_question_id by a_admin_id, It shall delete the mentioned question, 
+	##as it was created by a_admin_id
+	delete_module(a_admin_id, "question", aa_question_id, a_admin_token, True)
+
+
+	##Now trying to delete a subcriteria aa_sub_criteria_id, this shall delete all the questions, level made till now.
+	##this will delete all the nodes below this aa_criteria_id and also deletes the aa_criteria_id frpm the 
+	## parent_collection children key 
+	delete_module(a_admin_id, "criteria", aa_criteria_id, a_admin_token, True)
+
 

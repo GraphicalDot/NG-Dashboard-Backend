@@ -90,17 +90,28 @@ def if_module_permission(collection, user_id, rest_parameter, module_id):
 	return 
 
 
-
 @coroutine
 def delete_children(db, children, child_collection_name):
+	logger.info(child_collection_name)
+	logger.info(children)
 	collection = db[child_collection_name]
 	for child_id in children:
 		child = yield collection.find_one({"module_id": child_id})
-		yield collection.delete_one({"module_id": child_id})
-		child_children = child["children"]
-		child_child_collection_name = child["child_collection_name"]
-		if child_child_collection_name:
-			delete_children(db, child_children, child_child_collection_name)
+		logger.info(child_id)
+		logger.info(child)
+		delete_id = yield collection.delete_one({"module_id": child_id})
+		try:
+			child_children = child["children"]
+			child_child_collection_name = child["child_collection_name"]
+			logger.info(child["module_type"])
+			logger.info(child_children)
+			logger.info(child_child_collection_name)
+			logger.info("\n")
+			if child_child_collection_name:
+				delete_children(db, child_children, child_child_collection_name)
+		except Exception as e:
+			logger.info(e)
+			pass
 
 	return False
 
@@ -179,6 +190,7 @@ class Generic(tornado.web.RequestHandler):
 	def initialize(self):
 		self.db = None
 		self.user_collection = None
+		self.parent_collection_name = None
 		self.parent_collection = None
 		self.module_collection = None
 		self.document_id = "sub_category_id"
@@ -239,10 +251,11 @@ class Generic(tornado.web.RequestHandler):
 							"parent_id": parent_id, "parents": parent_document["parents"], \
 							"child_collection_name": self.child_collection_name, "user_id": user_id,\
 							 "score": score, "text_description": text_description, "utc_epoch": time.time(), \
-							 "indian_time": indian_time()}
+							 "indian_time": indian_time(), "children": [], "parent_collection_name": self.parent_collection_name}
 
 					result = yield self.module_collection.insert_one(data)
 
+					##This will add a children to the parent collection
 					self.parent_collection.update({"module_id": parent_id}, {"$addToSet": {"children": module_id}}, upsert=False)
 
 					logger.info("New [%s] with name=[%s], _id=[%s] and module_id=[%s] created by user id [%s]"%(self.document_name, module_name,\
@@ -333,16 +346,30 @@ class Generic(tornado.web.RequestHandler):
 			post_arguments = json.loads(self.request.body.decode("utf-8"))
 			user_id = post_arguments.get("user_id", None) ##who created this category
 			try:
-				yield if_module_permission(self.module_collection, user_id, "delete", module_id)
+				permissions = yield if_module_permission(self.module_collection, user_id, "delete", module_id)
 				module = yield self.module_collection.find_one({"module_id": module_id})
 				children = module["children"]
 				child_collection_name = module["child_collection_name"]
+				
 				yield self.module_collection.delete_one({"module_id": module_id})
-				while True:
-					delete_children(self.db, children, child_collection_name)
+				
+				logger.info(self.parent_collection_name)
+				##This dleetes the module id from the children field on the parent
+				if module["parent_id"]:
+					yield self.db[self.parent_collection_name].update({"module_id": module["parent_id"]},{"$pull": {"children": module_id } } )
 
 
-				##TODO, Delet this category and all its children and children
+				if child_collection_name:
+					yield delete_children(self.db, children, child_collection_name)
+
+
+				##TODO, Delete this category and all its children and children
+
+			except KeyError as e:
+				##implies that this one has no children
+				self.write({"error": False, "success": True, "message": "module_id [%s] deleted"%module_id})
+				self.finish()
+				return 
 			except Exception as e:
 				print (traceback.format_exc())
 				logger.error(e)

@@ -7,7 +7,7 @@ from SettingsModule.settings import question_collection_name, default_document_l
 									indian_time, permissions, category_collection_name,\
 									app_super_admin, app_super_admin_pwd, app_super_admin_user_id,\
 									user_collection_name, criteria_collection_name, \
-									indian_time, sub_criteria_collection_name
+									indian_time, sub_criteria_collection_name, level_collection_name
 
 from GenericModule.generic import GenericPermissions, Generic, Generics
 
@@ -27,6 +27,7 @@ import time
 class QuestionPermissions(GenericPermissions):
 	def initialize(self):
 		self.db = self.settings["db"]
+		self.parent_collection_name = level_collection_name
 		self.parent_collection = self.db[level_collection_name]	
 		self.user_collection = self.db[user_collection_name]
 		self.module_collection = self.db[question_collection_name]
@@ -40,6 +41,7 @@ class QuestionPermissions(GenericPermissions):
 class Question(Generic):
 	def initialize(self):
 		self.db = self.settings["db"]
+		self.parent_collection_name = level_collection_name
 		self.parent_collection = self.db[level_collection_name]	
 		self.user_collection = self.db[user_collection_name]
 		self.module_collection = self.db[question_collection_name]
@@ -51,7 +53,7 @@ class Question(Generic):
 
 
 @auth
-class Criterion(Generics):
+class Questions(Generics):
 	"""
 	Return questions 
 	Questions can filtered according to the 
