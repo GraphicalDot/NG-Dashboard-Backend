@@ -659,7 +659,6 @@ if __name__ == "__main__":
 	##Creating criteria by a_admin_id on aa_cat_id
 	aa_criteria_id = create_criteria(a_admin_id, aa_cat_id, a_admin_token, True)
 	
-	"""
 	ab_criteria_id = create_criteria(a_admin_id, aa_cat_id, a_admin_token, True)
 	ac_criteria_id = create_criteria(a_admin_id, aa_cat_id, a_admin_token, True)
 
@@ -679,7 +678,6 @@ if __name__ == "__main__":
 	##get all criteria by b_admin_id
 	print ("\n\n\n")
 	get_all_module(b_admin_id, "criterion", b_admin_token, 0)
-	"""
 
 	#Creating sub criteria by a_admin_id
 	aa_sub_criteria_id = create_module(a_admin_id, aa_criteria_id, "subcriteria", "sub_criteria_name", a_admin_token, True)
@@ -709,7 +707,7 @@ if __name__ == "__main__":
 	ab_question_id = create_module(a_admin_id, aa_level_id, "question", "question_name", a_admin_token, True, ["address_proof", "incomme_tax_statement"])
 	ac_question_id = create_module(a_admin_id, aa_level_id, "question", "question_name", a_admin_token, True, ["address_proof", "id_proof"])
 	ad_question_id = create_module(a_admin_id, aa_level_id, "question", "question_name", a_admin_token, True, ["address_proof", "id_proof"])
-	ad_question_id = create_module(a_admin_id, aa_level_id, "question", "question_name", a_admin_token, True, ["address_proof", "id_proof"])
+	ae_question_id = create_module(a_admin_id, aa_level_id, "question", "question_name", a_admin_token, True, ["address_proof", "id_proof"])
 
 
 
@@ -724,10 +722,29 @@ if __name__ == "__main__":
 	##as it was created by a_admin_id
 	delete_module(a_admin_id, "question", aa_question_id, a_admin_token, True)
 
+	##til now rh graph of modules looks like this 
+	"""
 
+											aa_cat_id (a_admin_id)
+													|
+						aa_criteria_id(a_admin_id)          ab_criteria_id(a_admin_id)                    ac_criteria_id(a_admin_id)
+									|								|													|
+		aa_sub_criteria_id    ab_sub_criteria_id  ac_sub_criteria_id	
+				|
+				|
+				|___________________________
+											|
+								aa_level_id            ab_level_id           ac_level_id
+										|
+										|
+										|
+				aa_question_id ab_question_id ac_question_id ad_question_id  ae_aquestion_id						
+
+	"""
 	##Now trying to delete a subcriteria aa_sub_criteria_id, this shall delete all the questions, level made till now.
 	##this will delete all the nodes below this aa_criteria_id and also deletes the aa_criteria_id frpm the 
-	## parent_collection children key 
+	## parent_collection children key, Ideally if we going to delete the aa_cat_id it should delete all the
+	## surbranches 
 	delete_module(a_admin_id, "criteria", aa_criteria_id, a_admin_token, True)
 
 
