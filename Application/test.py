@@ -515,6 +515,32 @@ def	create_criteria(user_id, parent_id, token, success):
 	return module_id
 
 
+def update_module_permission(user_id, token, module_id, module_api, permission_object, success):
+
+	"""
+	Args:
+		module_id: module for which the permissions needs to be updated
+		module_api: api like /criteriapermission, /subcriteriapermission, /levelpermission api
+		user_id: user_id who wants to update permissions 
+		permission_object: [{"user_id": "", "create": True, "delete": False, "get": True, "put": True}, {}]
+		token: jwt token for authentication in the headers
+
+	"""
+	print ("\n\n")
+	cprint("Update Permission on module [%s] by user [%s] who created\
+	 this module_api [%s]"%(module_id, user_id, module_api), "green")
+	data_object = {"module_id": module_id, "user_id": user_id, "permissions": permission_object}
+
+	r = requests.post("http://localhost:8000/%s"%(module_api), data=json.dumps(data_object),\
+	 headers={"Authorization": token})
+
+	cprint(r.json(), "blue")
+	if r.json()["success"] != success:
+		cprint("\t\tTest Failed", "red", "on_white")
+	else:
+		cprint("\t\tTest Passed", "green", "on_white")
+	return 
+
 def get_category(user_id, category_id, token, success):
 	r = requests.get("http://localhost:8000/category/%s"%category_id, data=json.dumps({"user_id": user_id}),\
 	 headers={"Authorization": token})
@@ -636,7 +662,7 @@ if __name__ == "__main__":
 	b_admin_id, b_admin_token = create_admin(super_admin_user_id)
 	c_admin_id, c_admin_token = create_admin(super_admin_user_id)
 	
-	aa_cat_id = create_category(a_admin_id, a_admin_token)
+	#aa_cat_id = create_category(a_admin_id, a_admin_token)
 	"""
 	ab_cat_id = create_category(a_admin_id, a_admin_token)
 	ac_cat_id = create_category(a_admin_id, a_admin_token)
@@ -657,9 +683,53 @@ if __name__ == "__main__":
 	##Todo Some funck with permissions
 	"""
 	##Creating criteria by a_admin_id on aa_cat_id
-	aa_criteria_id = create_criteria(a_admin_id, aa_cat_id, a_admin_token, True)
+	aa_criteria_id = create_criteria(a_admin_id, None, a_admin_token, True)
 	
-	ab_criteria_id = create_criteria(a_admin_id, aa_cat_id, a_admin_token, True)
+	ab_criteria_id = create_criteria(a_admin_id, None, a_admin_token, True)
+	
+	##This shall fail, as criteria doesnt have any parents
+	create_criteria(b_admin_id, aa_criteria_id, b_admin_token, True)
+
+	
+	get_module(a_admin_id, aa_criteria_id, "criteria", a_admin_token, True)
+	
+	##getting aa_criteria_id by b_admin_id, must fail
+	get_module(b_admin_id, aa_criteria_id, "criteria", b_admin_token, False)
+
+	##update permission by b_admin_id on aa_criteria_id, shall fail because ity doesnt have 
+	##any permission on this criteria module id
+	print ("Admin One Id a_admin_id[%s]"%a_admin_id)
+	print ("Admin Two Id, b_admin_id[%s]"%b_admin_id)
+	permission_object = [{"user_id": b_admin_id, "create": True, "get": True, "put": True, "delete": False}]
+	#must fail
+	update_module_permission(b_admin_id, b_admin_token, aa_criteria_id, "criteriapermissions", permission_object, False)
+
+	##this shall pass as we are trying to update permission for b_admin_id by a_admin_id who actually created this
+	## criteria
+	#must pass
+	update_module_permission(a_admin_id, a_admin_token, aa_criteria_id, "criteriapermissions", permission_object, True)
+
+	#Now try to get this aa_criteria_id by b_admin_id, who now have permissions but earlier not
+	get_module(b_admin_id, aa_criteria_id, "criteria", b_admin_token, True)
+
+
+
+	aa_sub_criteria_id = create_module(a_admin_id, aa_criteria_id, "subcriteria", "sub_criteria_name", a_admin_token, True)
+
+	aa_level_id = create_module(a_admin_id, aa_sub_criteria_id, "level", "level_name", a_admin_token, True)
+
+	##CReate Questions
+	aa_question_id = create_module(a_admin_id, aa_level_id, "question", "question_name", a_admin_token, True, ["address_proof"])
+	ab_question_id = create_module(a_admin_id, aa_level_id, "question", "question_name", a_admin_token, True, ["address_proof", "incomme_tax_statement"])
+	ac_question_id = create_module(a_admin_id, aa_level_id, "question", "question_name", a_admin_token, True, ["address_proof", "id_proof"])
+	ad_question_id = create_module(a_admin_id, aa_level_id, "question", "question_name", a_admin_token, True, ["address_proof", "id_proof"])
+	ae_question_id = create_module(a_admin_id, aa_level_id, "question", "question_name", a_admin_token, True, ["address_proof", "id_proof"])
+
+
+
+	delete_module(a_admin_id, "criteria", aa_criteria_id, a_admin_token, True)
+
+	"""
 	ac_criteria_id = create_criteria(a_admin_id, aa_cat_id, a_admin_token, True)
 
 	##Try to create criteria by b_admin_id on aa_cat_id
@@ -685,13 +755,11 @@ if __name__ == "__main__":
 	ac_sub_criteria_id = create_module(a_admin_id, aa_criteria_id, "subcriteria", "sub_criteria_name", a_admin_token, True)
 
 
-	"""
 	#Creating sub criteria by b_admin_id, They all going to fail because b_admin_id doesnt have an permission on parent 
 	##category aa_criteria_id which was created by a_admin_id
 	ba_sub_criteria_id = create_module(b_admin_id, aa_criteria_id, "subcriteria", "sub_criteria_name", b_admin_token, False, )
 	bb_sub_criteria_id = create_module(b_admin_id, ab_criteria_id, "subcriteria", "sub_criteria_name", b_admin_token, False)
 	bc_sub_criteria_id = create_module(b_admin_id, ac_criteria_id, "subcriteria", "sub_criteria_name", b_admin_token, False)
-	"""
 
 
 
@@ -723,7 +791,6 @@ if __name__ == "__main__":
 	delete_module(a_admin_id, "question", aa_question_id, a_admin_token, True)
 
 	##til now rh graph of modules looks like this 
-	"""
 
 											aa_cat_id (a_admin_id)
 													|
@@ -740,11 +807,10 @@ if __name__ == "__main__":
 										|
 				aa_question_id ab_question_id ac_question_id ad_question_id  ae_aquestion_id						
 
-	"""
 	##Now trying to delete a subcriteria aa_sub_criteria_id, this shall delete all the questions, level made till now.
 	##this will delete all the nodes below this aa_criteria_id and also deletes the aa_criteria_id frpm the 
 	## parent_collection children key, Ideally if we going to delete the aa_cat_id it should delete all the
 	## surbranches 
 	delete_module(a_admin_id, "criteria", aa_criteria_id, a_admin_token, True)
-
+	"""
 

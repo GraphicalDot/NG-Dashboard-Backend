@@ -20,7 +20,8 @@ import uuid
 
 @coroutine
 def if_create_permissions(user_collection, parent_collection, module_collection, \
-													user_id, rest_parameter, parent_id):
+						user_id, rest_parameter, parent_id, document_name,\
+						parent_collection_name):
 	"""
 	If a user want to create a SubCategory
 
@@ -29,14 +30,32 @@ def if_create_permissions(user_collection, parent_collection, module_collection,
 
 	when created the user will have all permissions on this sub category
 	"""
-
-	parent = yield parent_collection.find_one({"module_id": parent_id})
-	if not parent:
-			raise Exception("The parent with id=[%s] doesnt exists"%parent_id)
-
 	user = yield user_collection.find_one({"user_id": user_id}, projection={"_id": False, "user_type": True})
+
 	if not user:
 			raise Exception("User doesnt exists")
+	if parent_collection_name:
+			parent = yield parent_collection.find_one({"module_id": parent_id})
+	else:
+		parent = None
+
+	if not parent:
+			## This implies that if parent document doestn exists, then two cases might happen
+			## case 1 : the user is admin and wants to create a criteria  
+			if user["user_type"] == "admin" and document_name == "criteria":
+					logger.info("The user is [%s] and [%s] is being created"%(user["user_type"], "criteria"))
+					return True
+			##case 2: the user is superadmin and wants to create criteria, which doestn have 
+			##any parent for it
+			if user["user_type"] == "superadmin" and document_name == "criteria":
+					logger.info("The user is [%s] and [%s] is being created"%(user["user_type"], "criteria"))
+					return True
+
+			raise Exception("The parent with id=[%s] doesnt exists"%parent_id)
+
+
+
+
 	##Check if a user is superadmin
 	if user["user_type"] == "superadmin":
 			##returning whole parent document, which will be used to extract necessary information
@@ -95,11 +114,11 @@ def delete_children(db, children, child_collection_name):
 	logger.info(child_collection_name)
 	logger.info(children)
 	collection = db[child_collection_name]
-	for child_id in children:
-		child = yield collection.find_one({"module_id": child_id})
-		logger.info(child_id)
+	for child in children:
+		child = yield collection.find_one({"module_id": child["module_id"]})
+		logger.info(child["module_id"])
 		logger.info(child)
-		delete_id = yield collection.delete_one({"module_id": child_id})
+		delete_id = yield collection.delete_one({"module_id": child["module_id"]})
 		try:
 			child_children = child["children"]
 			child_child_collection_name = child["child_collection_name"]
@@ -157,6 +176,9 @@ class GenericPermissions(tornado.web.RequestHandler):
 			yield if_module_permission(self.module_collection, user_id, "create", module_id)
 			
 			logger.info("The user [%s] have create permission on %s [%s]"%(user_id, self.document_id, module_id))
+			yield self.module_collection.update_one({"module_id": module_id},  
+					{"$addToSet": {"history.change_paermissions": {"user_id": user_id, "utc_epoch": time.time(), 
+					"indian_time": indian_time(), "action": permissions}}}, upsert=False)
 
 			for permission_obj in permissions:
 					user_id = permission_obj.pop("user_id")
@@ -199,6 +221,7 @@ class Generic(tornado.web.RequestHandler):
 		self.child_collection_name = None
 
 
+
 	@asynchronous
 	@coroutine
 	##@categoryauth
@@ -230,12 +253,11 @@ class Generic(tornado.web.RequestHandler):
 
 
 					##name of the parent category, subcategory. subcriteria etc
-					logger.info(parent_id)
 					parent_document = yield if_create_permissions(self.user_collection, \
-						self.parent_collection, self.module_collection, user_id, "create", parent_id)
+						self.parent_collection, self.module_collection, user_id, "create", parent_id, self.document_name, self.parent_collection_name)
 
 
-					module_document = yield self.module_collection.find_one({self.document_name: module_name})
+					module_document = yield self.module_collection.find_one({"%s_name"%self.document_name: module_name})
 
 					if module_document:
 						raise Exception("%s on %s module already exists"%(module_name, self.document_name))
@@ -244,23 +266,26 @@ class Generic(tornado.web.RequestHandler):
 
 					module_id = hashlib.sha1(module_hash.encode("utf-8")).hexdigest()
 					
-					parent_document["parents"].append({"name": parent_document["module_name"], "id": parent_document["module_id"] })
-					logger.info(parent_document["parents"])
+					##this implies that an admin or superadmin wants to create a criteria(parent module) for 
+					##this application, because this parent will not have any parent_collection_name
+					if self.parent_collection_name:
+							parent_document["parents"].append({"name": parent_document["module_name"], "id": parent_document["module_id"],
+																"module_type": parent_document["module_type"] })
+							parents = parent_document["parents"]
+							##This will add a children to the parent collection
+							self.parent_collection.update({"module_id": parent_id}, {"$addToSet": \
+								{"children": {"module_id": module_id, "module_name": module_name, "module_type": self.document_name}}}, upsert=False)
+
+					else:
+							parents = []
 
 					data = {"module_id": module_id, "module_name": module_name, "module_type": self.document_name,\
-							"parent_id": parent_id, "parents": parent_document["parents"], \
+							"parent_id": parent_id, "parents": parents, \
 							"child_collection_name": self.child_collection_name, "user_id": user_id,\
 							 "score": score, "text_description": text_description, "utc_epoch": time.time(), \
 							 "indian_time": indian_time(), "children": [], "parent_collection_name": self.parent_collection_name}
 
 					result = yield self.module_collection.insert_one(data)
-
-					##This will add a children to the parent collection
-					self.parent_collection.update({"module_id": parent_id}, {"$addToSet": {"children": module_id}}, upsert=False)
-
-					logger.info("New [%s] with name=[%s], _id=[%s] and module_id=[%s] created by user id [%s]"%(self.document_name, module_name,\
-					 result.inserted_id, module_id, user_id))
-
 
 					permission = {"create": True, "delete": True, "update": True, "get": True}
 					##this will add the creator id crud operation permission to this category
@@ -279,7 +304,7 @@ class Generic(tornado.web.RequestHandler):
 				self.finish()
 				return 
 			self.write({"error": False, "success": True, "message": None, "module_id": module_id, \
-								 "parent_id": parent_document["module_id"]})
+								 "parent_id": parent_id})
 			self.finish()
 			return 
 			
@@ -299,6 +324,11 @@ class Generic(tornado.web.RequestHandler):
 
 				result = yield self.module_collection.find_one({"module_id": module_id}, projection={"_id": False, 
 						"text_description": True, "score": True, self.document_name: True})
+
+				yield self.module_collection.update_one({"module_id": module_id},  
+					{"$addToSet": {"history.get": {"user_id": user_id, "utc_epoch": time.time(), "indian_time": indian_time()}}}, upsert=False)
+
+
 			except Exception as e:
 				print (traceback.format_exc())
 				logger.error(e)
@@ -326,7 +356,12 @@ class Generic(tornado.web.RequestHandler):
 				yield if_module_permission(self.module_collection, user_id, "put", module_id)
 
 				self.module_collection.update_one({"module_id": module_id}, {"$set":{"text_description": text_description,\
-						"score": score}}, upsert=False)					
+					"score": score}}, upsert=False)					
+				
+				yield self.module_collection.update_one({"module_id": module_id},  
+					{"$addToSet": {"history.put": {"user_id": user_id, "utc_epoch": time.time(), "indian_time": indian_time()}, 
+							"action": post_arguments}}, upsert=False)				
+
 
 			except Exception as e:
 				print (traceback.format_exc())
@@ -348,15 +383,19 @@ class Generic(tornado.web.RequestHandler):
 			try:
 				permissions = yield if_module_permission(self.module_collection, user_id, "delete", module_id)
 				module = yield self.module_collection.find_one({"module_id": module_id})
+				module_name = module["module_name"]
+
 				children = module["children"]
 				child_collection_name = module["child_collection_name"]
 				
 				yield self.module_collection.delete_one({"module_id": module_id})
-				
-				logger.info(self.parent_collection_name)
+				yield self.module_collection.update_one({"module_id": module_id},  
+					{"$addToSet": {"history.delete": {"user_id": user_id, "utc_epoch": time.time(), "indian_time": indian_time()}}}, upsert=False)				
+
 				##This dleetes the module id from the children field on the parent
 				if module["parent_id"]:
-					yield self.db[self.parent_collection_name].update({"module_id": module["parent_id"]},{"$pull": {"children": module_id } } )
+					yield self.db[self.parent_collection_name].update({"module_id": module["parent_id"]},\
+						{"$pull": {"children": {"module_id": module_id, "module_name": module_name}}})
 
 
 				if child_collection_name:

@@ -27,7 +27,7 @@ app_super_admin_pwd = "1234Pacific###"
 app_super_admin_user_id = "nctsuperadmin###"
 
 
-user_types = ["accessor", "question_uploader", "admin", "evaluator", "superadmin"]
+user_types = ["accessor", "question_uploader", "admin", "evaluator", "superadmin", "representative"]
 ##change this if you want all get requests for list to return more than 10 results
 default_document_limit = 10
 

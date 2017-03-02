@@ -27,8 +27,8 @@ import time
 class CriteriaPermissions(GenericPermissions):
 	def initialize(self):
 		self.db = self.settings["db"]
-		self.parent_collection_name = category_collection_name
-		self.parent_collection = self.db[category_collection_name]	
+		self.parent_collection_name = None
+		self.parent_collection = None, #self.db[category_collection_name]	
 		self.user_collection = self.db[user_collection_name]
 		self.module_collection = self.db[criteria_collection_name]
 		self.child_collection = self.db[sub_criteria_collection_name]
@@ -41,8 +41,8 @@ class CriteriaPermissions(GenericPermissions):
 class Criteria(Generic):
 	def initialize(self):
 		self.db = self.settings["db"]
-		self.parent_collection_name = category_collection_name
-		self.parent_collection = self.db[category_collection_name]	
+		self.parent_collection_name = None
+		self.parent_collection = None, #self.db[category_collection_name]	
 		self.user_collection = self.db[user_collection_name]
 		self.module_collection = self.db[criteria_collection_name]
 		self.child_collection = self.db[sub_criteria_collection_name]

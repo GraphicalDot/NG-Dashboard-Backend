@@ -41,10 +41,11 @@ app_urls = [
 			(r"/signupapplicant/(\d+$)", SignupApplicant),
 			(r"/signupapplicant/([a-zA-Z0-9_.-]*$)", SignupApplicant),
 			
-			(r"/category$", Category),
-			(r"/categories$", Categories),
-			(r"/category/([a-zA-Z0-9_.-]*$)", Category),
-			(r"/categorypermissions$", CategoryPermissions),
+
+			#(r"/category$", Category),
+			#(r"/categories$", Categories),
+			#(r"/category/([a-zA-Z0-9_.-]*$)", Category),
+			#(r"/categorypermissions$", CategoryPermissions),
 
             (r"/criteria$", Criteria),
             (r"/criterion$", Criterion),
