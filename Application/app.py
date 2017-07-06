@@ -24,10 +24,6 @@ define("port", default=app_port, help="run on the given port", type=int)
 from LoginModule.login import Login
 from SignupModule.signup import Signup, SignupApplicant, Users
 from SettingsModule.settings import mongo_db
-from CategoryModule.categories import Category, Categories, CategoryPermissions
-from CriteriaModule.criteria import Criteria, Criterion, CriteriaPermissions
-from SubCriteriaModule.subcriteria import SubCriteria, SubCriterions, SubCriteriaPermissions
-from LevelModule.levels import Level, Levels, LevelPermissions
 from QuestionsModule.questions import Question, Questions, QuestionPermissions
 
 app_urls = [
@@ -41,29 +37,6 @@ app_urls = [
 			(r"/signupapplicant/(\d+$)", SignupApplicant),
 			(r"/signupapplicant/([a-zA-Z0-9_.-]*$)", SignupApplicant),
 			
-
-			#(r"/category$", Category),
-			#(r"/categories$", Categories),
-			#(r"/category/([a-zA-Z0-9_.-]*$)", Category),
-			#(r"/categorypermissions$", CategoryPermissions),
-
-            (r"/criteria$", Criteria),
-            (r"/criterion$", Criterion),
-            (r"/criteria/([a-zA-Z0-9_.-]*$)", Criteria),
-            (r"/criteriapermissions$", CriteriaPermissions),
-
-
-
-            (r"/subcriteria$", SubCriteria),
-            (r"/subcriterion$", SubCriterions),
-            (r"/subcriteria/([a-zA-Z0-9_.-]*$)", SubCriteria),
-            (r"/subcategorypermissions$", SubCriteriaPermissions),
-
-
-            (r"/level$", Level),
-            (r"/levels$", Levels),
-            (r"/level/([a-zA-Z0-9_.-]*$)", Level),
-            (r"/levelpermissions$", LevelPermissions),
 			
             (r"/question$", Question),
             (r"/questions$", Questions),
