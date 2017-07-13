@@ -10,12 +10,18 @@ import json
 #https://emptysqua.re/blog/refactoring-tornado-coroutines/
 ## finding user from motor  yields a future object which is nothing but a promise that it will have a value in future
 ## and gen.coroutine is a perfect to resolve a future object uyntillit is resolved
+
+from generic.cors import cors
+
+
 class Login(tornado.web.RequestHandler):
 
 	def initialize(self):
 			self.db = self.settings["db"]
 			self.collection = self.db[user_collection_name]
-
+			
+			
+	@cors
 	@tornado.web.asynchronous
 	@tornado.gen.coroutine
 	def  post(self):
@@ -27,31 +33,32 @@ class Login(tornado.web.RequestHandler):
 			password: 
 			newpassword:
 		"""
+		
+		print (self.request.body)
 		post_arguments = json.loads(self.request.body.decode("utf-8"))
-		user_type = post_arguments.get("user_type", None)
+		print (post_arguments)
 		username = post_arguments.get("username", None)
 		password = post_arguments.get("password", None)
 		newpassword = post_arguments.get("newpassword", None)
-		logger.info("user_type=%s, username=%s, password=%s, newpassword=%s"%(user_type, username, password, newpassword))
+		logger.info("username=%s, password=%s, newpassword=%s"%(username, password, newpassword))
 
 		
 		db = self.settings["db"]
 		#user = yield db[credentials].find_one({'user_type': user_type, "username": username, "password": password})
 		
 		try:
-			if not user_type:
-				raise Exception("user_type cannot be left unattempted")
-
 			if not username or not password:
 				raise Exception("username and password must be given")
 
 
 			password = hashlib.sha1(password.encode("utf-8")).hexdigest()
-			user = yield self.collection.find_one({'user_type': user_type, "username": username, "password": password})
+			print (password)
+			print (self.collection)
+			user = yield self.collection.find_one({"username": username, "password": password})
+			print (user)
 			if not user:
 				raise Exception("user doesnt exist")
-			token =  jwt.encode({'username': user["username"], "password": user["password"],\
-						 "user_type": user["user_type"]}, jwt_secret, algorithm='HS256')
+			token =  jwt.encode({'username': user["username"], "password": user["password"]}, jwt_secret, algorithm='HS256')
 			
 		
 		except Exception as e:

@@ -2,9 +2,7 @@ import tornado.options
 import tornado.web
 from tornado.escape import json_decode as TornadoJsonDecode
 from SettingsModule.settings  import user_collection_name, indian_time, jwt_secret, \
-									user_types, permissions, question_collection_name,\
-									category_collection_name, criteria_collection_name, \
-									level_collection_name, default_document_limit
+									 default_document_limit
 from LoggingModule.logging import logger
 import time 
 import hashlib
@@ -76,7 +74,6 @@ class Signup(tornado.web.RequestHandler):
 	def initialize(self):
 		self.db = self.settings["db"]
 		self.collection = self.db[user_collection_name]	
-		self.categorie_collection = self.db[category_collection_name]
 
 
 	
@@ -105,37 +102,28 @@ class Signup(tornado.web.RequestHandler):
 		"""
 		post_arguments = json.loads(self.request.body.decode("utf-8"))
 		user_type = post_arguments.get("user_type")
-		full_name = post_arguments.get("full_name", None)
+		first_name = post_arguments.get("full_name", None)
+		last_name = post_arguments.get("last_name", None)
 		email = post_arguments.get("email", None)
 		username = post_arguments.get("username", None)
 		password = post_arguments.get("password", None)
-		state = post_arguments.get("state", None) 
-		region = post_arguments.get("region", None) 
-		profile_pic = post_arguments.get("profile_pic", None)
+		phone_number = post_arguments.get("phone_number", None)
 		##Permissions
 		##For the user other 
-		is_superadmin = post_arguments.get("is_superadmin", False) #handle this
-		parent_user_id = post_arguments.get("parent_user_id", None) ## Which implies a superadmin
 		deactivate = post_arguments.get("deactivate", None)
 
 		
-		logger.info("user_type=%s, full_name=%s, user_email=%s, username=%s, \
-			password=%s, state=%s, region=%s,parent_user_id=%s, is_superadmin=%s "%(user_type, full_name, email,\
-			  username, password, state, region, parent_user_id, is_superadmin))
+		logger.info("user_type=%s, first_name=%s, user_email=%s, username=%s, \
+			password=%s, phone_number=%s "%(user_type, first_name, email,\
+			  username, password, phone_number))
 
 
 		
 		#user = yield db[credentials].find_one({'user_type': user_type, "username": username, "password": password})
 		
 		try:
-			assert isinstance(state, list), "state permissions must be and array"
-			assert isinstance(region, list), "region permissions must be and array"
-
-			if None in [user_type, username, password, email, state, region, full_name]:
+			if None in [user_type, username, password, email, first_name]:
 				raise Exception("Fields shouldnt be empty")
-
-			if user_type not in user_types:
-				raise Exception("user_type is not allowed")
 
 
 			parent =  yield self.collection.find_one({"user_id": parent_user_id})
