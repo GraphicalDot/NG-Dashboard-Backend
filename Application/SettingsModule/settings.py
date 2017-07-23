@@ -10,6 +10,7 @@ mongo_ip = "localhost"
 mongo_port = 27017
 mongo_db_name = "dashboard"
 user_collection_name = "users"
+nanoskill_collection_name = "nanoskills"
 
 jwt_secret = "somesecret"
 app_super_admin = "nctsuperadmin"

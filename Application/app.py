@@ -24,6 +24,7 @@ define("port", default=app_port, help="run on the given port", type=int)
 from LoginModule.login import Login
 from SignupModule.signup import Signup, SignupApplicant, Users
 from SettingsModule.settings import mongo_db
+from NanoskillsModule.nanoskill import Nanoskills 
 #from QuestionsModule.questions import Question, Questions, QuestionPermissions
 
 app_urls = [
@@ -37,6 +38,11 @@ app_urls = [
 			(r"/signupapplicant/(\d+$)", SignupApplicant),
 			(r"/signupapplicant/([a-zA-Z0-9_.-]*$)", SignupApplicant),
 			
+            (r"/nanoskills$", Nanoskills),
+			(r"/nanoskills/(\d+$)", Nanoskills),
+			(r"/nanoskills/([a-zA-Z0-9_.-]*$)", Nanoskills),
+
+
 
             			
             #(r"/question$", Question),

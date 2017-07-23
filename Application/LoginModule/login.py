@@ -19,7 +19,17 @@ class Login(tornado.web.RequestHandler):
 	def initialize(self):
 			self.db = self.settings["db"]
 			self.collection = self.db[user_collection_name]
-			
+
+	@cors
+	@tornado.web.asynchronous
+	@tornado.gen.coroutine
+	def  get(self):
+		self.write({"error": False, "success": True})
+		self.finish()
+		return 
+
+
+
 			
 	@cors
 	@tornado.web.asynchronous
@@ -63,7 +73,7 @@ class Login(tornado.web.RequestHandler):
 		
 		except Exception as e:
 				logger.error(e)
-				self.write({"error": False, "success": True, "token": None, "message": e.__str__()})
+				self.write({"error": True, "success": True, "token": None, "message": e.__str__()})
 				#self.write({"error": False, "success": True})
 				self.finish()
 				return 

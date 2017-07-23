@@ -7,7 +7,7 @@ import jwt
 #https://simplapi.wordpress.com/2014/03/26/python-tornado-and-decorator/, refrence for roles
 # This actually check for the autorization, only one superdmin exists in this application till now.
 # if the user_type is not superdmin then it must be called from the databse if that user exists or not
-def _checkAuth(user_type, username, password):
+def _checkAuth(username, password, user_type=None):
     ''' Check user can access or not to this element '''
     # TODO: return None if user is refused
     # TODO: do database check here, to get user.
@@ -52,6 +52,7 @@ def auth(handler_class):
 								handler._transforms = []
 								handler.finish()
 								return False
+						print (auth_decoded)
 						auth_found      = _checkAuth(**auth_decoded)
 
 						if not auth_found:
