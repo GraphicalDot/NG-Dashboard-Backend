@@ -15,6 +15,7 @@ from AuthenticationModule.authentication import auth
 
 import codecs
 
+from generic.cors import cors
 reader = codecs.getreader("utf-8")
 
 
@@ -27,7 +28,7 @@ class Nanoskills(tornado.web.RequestHandler):
 		self.collection = self.db[nanoskill_collection_name]	
 
 
-	
+	@cors
 	@tornado.web.asynchronous
 	@tornado.gen.coroutine
 	def  post(self):
@@ -89,6 +90,8 @@ class Nanoskills(tornado.web.RequestHandler):
 
 
 
+
+	@cors
 	@tornado.web.asynchronous
 	@tornado.gen.coroutine
 	def put(self, nanoskill_id):
@@ -125,7 +128,7 @@ class Nanoskills(tornado.web.RequestHandler):
 		self.finish()
 		return 
 
-
+	@cors
 	@tornado.web.asynchronous
 	@tornado.gen.coroutine
 	def delete(self, nanoskill_id):
@@ -142,11 +145,10 @@ class Nanoskills(tornado.web.RequestHandler):
 		self.finish()
 		return
 
+	@cors
 	@tornado.web.asynchronous
 	@tornado.gen.coroutine
 	def get(self, nanoskill_id=None):
-		print (nanoskill_id)
-		print ("Hey rAM")
 		#user = self.check_user(user_id)
 		if nanoskill_id:
 				user = yield self.collection.find_one(projection={'_id': False})
