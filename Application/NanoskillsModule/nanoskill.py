@@ -145,14 +145,16 @@ class Nanoskills(tornado.web.RequestHandler):
 	@tornado.web.asynchronous
 	@tornado.gen.coroutine
 	def get(self, nanoskill_id):
+		print (nanoskill_id)
+		print ("Hey rAM")
 		#user = self.check_user(user_id)
-		user = yield self.collection.find({"nanoskill_id": nanoskill_id}, projection={'_id': False})
+		user = yield self.collection.find(projection={'_id': False}).to_list(length=100)
 		
 		if user:
-				message = {"error": False, "success": True, "message": None, "user": user}
+				message = {"error": False, "success": True, "message": None, "nanoskill": user}
 
 		else:
-				message = {"error": True, "success": False, "message": "User doesnt exist"}
+				message = {"error": True, "success": False, "message": "nanoskill doesnt exist"}
 
 		self.write(message)
 		self.finish()
