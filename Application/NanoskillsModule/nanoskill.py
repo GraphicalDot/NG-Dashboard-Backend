@@ -151,7 +151,7 @@ class Nanoskills(tornado.web.RequestHandler):
 		user = yield self.collection.find(projection={'_id': False}).to_list(length=100)
 		
 		if user:
-				message = {"error": False, "success": True, "message": None, "nanoskill": user}
+				message = {"error": False, "success": True, "message": None, "data": user}
 
 		else:
 				message = {"error": True, "success": False, "message": "nanoskill doesnt exist"}
