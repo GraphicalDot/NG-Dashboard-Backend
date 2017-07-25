@@ -25,8 +25,16 @@ class Nanoskills(tornado.web.RequestHandler):
 
 	def initialize(self):
 		self.db = self.settings["db"]
-		self.collection = self.db[nanoskill_collection_name]	
-
+		self.collection = self.db[nanoskill_collection_name]
+	
+	
+	@cors
+	@tornado.web.asynchronous
+	@tornado.gen.coroutine
+	def options(self, nanoskill_id=None):
+        # no body
+		self.set_status(204)
+		self.finish()
 
 	@cors
 	@tornado.web.asynchronous
@@ -67,14 +75,16 @@ class Nanoskills(tornado.web.RequestHandler):
 					a = CategoriesPermissions()
 					yield a.update_permissions(self.db, user_id, category_permissions)
 			"""
-			user = yield self.collection.insert_one({'name': name, "description": description,\
-							 "nanoskill_id": _id,"utc_epoch": time.time(), "indian_time": indian_time()})
+			nanoskill = {'name': name, "description": description,\
+							 "nanoskill_id": _id,"utc_epoch": time.time(), "indian_time": indian_time()}
+			yield self.collection.insert_one(nanoskill)
 
 			logger.info("Nanoskill created at %s with nanoskill_id %s"%(indian_time(), _id))
 			
 			
 			
 		
+
 			#TODO: will be used to send email to the user
 			##executor.submit(task, datetime.datetime.now())
 		except Exception as e:
@@ -83,8 +93,11 @@ class Nanoskills(tornado.web.RequestHandler):
 				self.finish()
 				return 
 
+		##This line has to be added, somehow while inserting nanoskill into the mongo, nanoskill itself got a new _id key
+		##which is not serializable
+		print (nanoskill.pop("_id"))
 		##TODO : implement JWT tokens
-		self.write({"error": False, "success": True, "nanoskill_id": _id})
+		self.write({"error": False, "success": True, "data": nanoskill})
 		self.finish()
 		return 
 
@@ -98,29 +111,10 @@ class Nanoskills(tornado.web.RequestHandler):
 		##TODO if a user has to become a superadmin
 		user = yield self.collection.find_one({"nanoskill_id": nanoskill_id}, projection={'_id': False})
 		if user:
-				details = { k: self.get_argument(k) for k in self.request.arguments if k not in ["state", "region"]}
-
-				state = self.request.arguments.get("state")
-				region = self.request.arguments.get("region") 
-
-				if state:
-						state =  list(map(lambda x: x.decode("utf-8"), state))
-						details["state"] = state
-				if region:
-						region = list(map(lambda x: x.decode("utf-8"), region)) 
-						details["region"] = region
-
-				if not bool(details):
-						message = {"error": True, "success": False, "message": "Nothing to update"}
-						self.write(message)
-						self.finish()
-						return 
-						
-
-				logger.info(details)
-				result = yield self.collection.update_one({'user_id': user_id}, {'$set': details})
-				logger.info(result.modified_count)
-				message = {"error": False, "success": True, "message": "User has been updated"}
+			logger.info(details)
+			result = yield self.collection.update_one({'nanoskill_id': nanoskill_id}, {'$set': details})
+			logger.info(result.modified_count)
+			message = {"error": False, "success": True, "message": "User has been updated"}
 
 		else:
 				message = {"error": True, "success": False, "message": "User doesnt exist"}

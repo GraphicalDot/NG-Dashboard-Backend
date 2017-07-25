@@ -35,6 +35,7 @@ def auth(handler_class):
 		def wrap_execute(handler_execute):
 				def require_auth(handler, kwargs):
 						auth_header = handler.request.headers.get('Authorization')
+						print (handler.request.headers)
 					
 						if auth_header is None: #or not auth_header.startswith('Basic '):
 								handler.set_status(401)
