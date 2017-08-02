@@ -2,7 +2,7 @@ import tornado.options
 import tornado.web
 from tornado.escape import json_decode as TornadoJsonDecode
 from SettingsModule.settings  import user_collection_name, indian_time, jwt_secret, \
-									 default_document_limit
+									 default_document_limit,mongo_db
 from LoggingModule.logging import logger
 import time 
 import hashlib
@@ -22,12 +22,12 @@ reader = codecs.getreader("utf-8")
 class Users(tornado.web.RequestHandler):
 
 	def initialize(self):
-		self.db = self.settings["db"]
-		self.collection = self.db[user_collection_name]	
+		self.db = mongo_db
+		self.collection = self.db[user_collection_name]
 
 	@tornado.web.asynchronous
 	@tornado.gen.coroutine
-	def  post(self):
+	def post(self):
 		post_arguments = json.loads(self.request.body.decode("utf-8"))
 		user_id = post_arguments.get("user_id") 
 		skip = post_arguments.get("skip", 0) 
@@ -63,16 +63,12 @@ class Users(tornado.web.RequestHandler):
 		self.write({"error": False, "success": True, "users": users})
 		self.finish()
 		return 
-
-
-
 @auth
 class Signup(tornado.web.RequestHandler):
 
 	def initialize(self):
-		self.db = self.settings["db"]
-		self.collection = self.db[user_collection_name]	
-
+		self.db = mongo_db
+		self.collection = self.db[user_collection_name]
 
 	
 	@tornado.web.asynchronous
@@ -178,8 +174,6 @@ class Signup(tornado.web.RequestHandler):
 		self.write({"error": False, "success": True, "token": token.decode("utf-8"), "user_id": user_id})
 		self.finish()
 		return 
-
-
 
 	@tornado.web.asynchronous
 	@tornado.gen.coroutine

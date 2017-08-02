@@ -54,7 +54,7 @@ def auth(handler_class):
 								handler.finish()
 								return False
 						print (auth_decoded)
-						auth_found      = _checkAuth(**auth_decoded)
+						auth_found = _checkAuth(**auth_decoded)
 
 						if not auth_found:
 								handler.set_status(401)

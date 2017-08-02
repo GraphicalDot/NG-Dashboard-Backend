@@ -1,6 +1,6 @@
 import tornado.options
 import tornado.web
-from SettingsModule.settings import user_collection_name, jwt_secret
+from SettingsModule.settings import user_collection_name, jwt_secret, mongo_db
 from LoggingModule.logging import logger
 from tornado.ioloop import IOLoop
 import hashlib
@@ -17,7 +17,7 @@ from generic.cors import cors
 class Login(tornado.web.RequestHandler):
 
 	def initialize(self):
-			self.db = self.settings["db"]
+			self.db = mongo_db
 			self.collection = self.db[user_collection_name]
 
 	@cors
@@ -36,7 +36,7 @@ class Login(tornado.web.RequestHandler):
 	@tornado.gen.coroutine
 	def  post(self):
 		"""
-		Used to create a new user or update and existing one
+		Used to create a new user or update an existing one
 		Request Param:
 			user_type: admin, accessor, evaluator, superadmin
 			username: 
@@ -53,7 +53,7 @@ class Login(tornado.web.RequestHandler):
 		logger.info("username=%s, password=%s, newpassword=%s"%(username, password, newpassword))
 
 		
-		db = self.settings["db"]
+		db =  mongo_db
 		#user = yield db[credentials].find_one({'user_type': user_type, "username": username, "password": password})
 		
 		try:
