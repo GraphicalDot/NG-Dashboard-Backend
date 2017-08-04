@@ -10,6 +10,11 @@ mongo_ip = "localhost"
 mongo_port = 27017
 mongo_db_name = "dashboard"
 user_collection_name = "users"
+subject_collection_name = "subjects"
+board_collection_name = "boards"
+domain_collection_name = "domains"
+concept_collection_name = "concepts"
+subconcept_collection_name = "subconcepts"
 nanoskill_collection_name = "nanoskills"
 
 jwt_secret = "somesecret"

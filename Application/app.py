@@ -25,6 +25,8 @@ from LoginModule.login import Login
 from SignupModule.signup import Signup, SignupApplicant, Users
 from SettingsModule.settings import mongo_db
 from NanoskillsModule.nanoskill import Nanoskills 
+from SubjectModule.subject import Subjects
+from Ontology.DomainModule.domain import Domains
 #from QuestionsModule.questions import Question, Questions, QuestionPermissions
 
 app_urls = [
@@ -42,7 +44,15 @@ app_urls = [
 			(r"/nanoskills/(\d+$)", Nanoskills),
 			(r"/nanoskills/([a-zA-Z0-9_.-]*$)", Nanoskills),
 
+            (r"/subjects$", Subjects),
+			(r"/subjects/(\d+$)", Subjects),
+			(r"/subjects/([a-zA-Z0-9_.-]*$)", Subjects),
 
+
+
+            (r"/domains$", Domains),
+			(r"/domains/(\d+$)", Domains),
+			(r"/domains/([a-zA-Z0-9_.-]*$)", Domains),
 
             			
             #(r"/question$", Question),
