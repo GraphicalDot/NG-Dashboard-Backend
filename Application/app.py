@@ -27,6 +27,8 @@ from SettingsModule.settings import mongo_db
 from NanoskillsModule.nanoskill import Nanoskills 
 from SubjectModule.subject import Subjects
 from Ontology.DomainModule.domain import Domains
+from Ontology.ConceptModule.concept import Concepts
+
 #from QuestionsModule.questions import Question, Questions, QuestionPermissions
 
 app_urls = [
@@ -54,6 +56,10 @@ app_urls = [
 			(r"/domains/(\d+$)", Domains),
 			(r"/domains/([a-zA-Z0-9_.-]*$)", Domains),
 
+
+            (r"/concepts$", Concepts),
+			(r"/concepts/(\d+$)", Concepts),
+			(r"/concepts/([a-zA-Z0-9_.-]*$)", Concepts),
             			
             #(r"/question$", Question),
             #(r"/questions$", Questions),
