@@ -6,6 +6,7 @@ from SettingsModule.settings  import concept_collection_name, indian_time, jwt_s
 from LoggingModule.logging import logger
 import time 
 import hashlib
+from pprint import pprint
 import jwt
 import json
 from AuthenticationModule.authentication import auth
@@ -52,7 +53,7 @@ class Concepts(tornado.web.RequestHandler):
 		connections = post_arguments.get("connections", None)
 		bloom_taxonomy = post_arguments.get("bloom_taxonomy", None)
 		difficulty_level= post_arguments.get("difficulty_level", None)
-		pre_requisite_concepts_other_domains = post_arguments.get("pre_requisite_concepts_other_domains", None)
+		required_domains = post_arguments.get("required_domains", None)
 		##Permissions
 		##For the user other 
 		
@@ -84,7 +85,7 @@ class Concepts(tornado.web.RequestHandler):
 			concept = {'concept_name': concept_name, "description": description,\
 							 "concept_id": _id,"utc_epoch": time.time(), "indian_time": indian_time(), "domain_id": domain_id, 
 							 "connections": connections, "difficulty_level": difficulty_level,
-							 "pre_requisite_concepts_other_domains": pre_requisite_concepts_other_domains,
+							 "required_domains": required_domains,
 							 "bloom_taxonomy": bloom_taxonomy
 							 }
 			yield self.collection.insert_one(concept)
@@ -169,7 +170,7 @@ class Concepts(tornado.web.RequestHandler):
 				message = {"error": True, "success": False, "message": "No nanoskills exist"}
 
 		self.write(message)
-		print (message)
+		pprint(message)
 		self.finish()
 		return 
 

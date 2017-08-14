@@ -24,11 +24,9 @@ define("port", default=app_port, help="run on the given port", type=int)
 from LoginModule.login import Login
 from SignupModule.signup import Signup, SignupApplicant, Users
 from SettingsModule.settings import mongo_db
-from NanoskillsModule.nanoskill import Nanoskills 
-from SubjectModule.subject import Subjects
 from Ontology.DomainModule.domain import Domains
 from Ontology.ConceptModule.concept import Concepts
-
+from UsersModule.users import Users
 #from QuestionsModule.questions import Question, Questions, QuestionPermissions
 
 app_urls = [
@@ -42,13 +40,10 @@ app_urls = [
 			(r"/signupapplicant/(\d+$)", SignupApplicant),
 			(r"/signupapplicant/([a-zA-Z0-9_.-]*$)", SignupApplicant),
 			
-            (r"/nanoskills$", Nanoskills),
-			(r"/nanoskills/(\d+$)", Nanoskills),
-			(r"/nanoskills/([a-zA-Z0-9_.-]*$)", Nanoskills),
+			(r"/users$", Users),
+			(r"/users/(\d+$)", Users),
+			(r"/users/([a-zA-Z0-9_.-]*$)", Users),
 
-            (r"/subjects$", Subjects),
-			(r"/subjects/(\d+$)", Subjects),
-			(r"/subjects/([a-zA-Z0-9_.-]*$)", Subjects),
 
 
 

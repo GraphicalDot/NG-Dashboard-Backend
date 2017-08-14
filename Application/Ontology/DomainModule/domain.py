@@ -89,6 +89,7 @@ class Domains(tornado.web.RequestHandler):
 			##executor.submit(task, datetime.datetime.now())
 		except Exception as e:
 				logger.error(e)
+				self.set_status(400)
 				self.write({"error": True, "success": False, "token": None, "message": e.__str__()})
 				self.finish()
 				return 
@@ -135,6 +136,7 @@ class Domains(tornado.web.RequestHandler):
 				message = {"error": False, "success": True, "message": "domain has been deleted"}
 		else:
 				message = {"error": True, "success": False, "message": "domain doesnt exist"}
+				self.set_status(400)
 
 		#TODO: delete all parmissions as well
 		self.write(message)

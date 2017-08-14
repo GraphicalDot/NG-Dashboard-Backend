@@ -1,11 +1,11 @@
 import tornado.options
 import tornado.web
 from tornado.escape import json_decode as TornadoJsonDecode
-from SettingsModule.settings  import nanoskill_collection_name, indian_time, jwt_secret, \
-									 default_document_limit
+from SettingsModule.settings  import user_collection_name, indian_time, jwt_secret
 from LoggingModule.logging import logger
 import time 
 import hashlib
+from pprint import pprint
 import jwt
 import json
 from AuthenticationModule.authentication import auth
@@ -21,17 +21,17 @@ reader = codecs.getreader("utf-8")
 
 
 #@auth
-class Nanoskills(tornado.web.RequestHandler):
+class Users(tornado.web.RequestHandler):
 
 	def initialize(self):
 		self.db = self.settings["db"]
-		self.collection = self.db[nanoskill_collection_name]
+		self.collection = self.db[user_collection_name]
 	
 	
 	@cors
 	@tornado.web.asynchronous
 	@tornado.gen.coroutine
-	def options(self, nanoskill_id=None):
+	def options(self, domain_id=None):
         # no body
 		self.set_status(204)
 		self.finish()
@@ -44,42 +44,44 @@ class Nanoskills(tornado.web.RequestHandler):
 			raise Exception("Dude! I need some data")
 		print (self.request.body)
 		post_arguments = json.loads(self.request.body.decode("utf-8"))
-		name = post_arguments.get("name", None)
-		description = post_arguments.get("description", None)
-		user_type = post_arguments.get("user_type")
+		first_name = post_arguments.get("first_name")
+		last_name = post_arguments.get("last_name")
+		email = post_arguments.get("email")
+		password = post_arguments.get("password")
+		permissions = post_arguments.get("permissions", None)
+		is_admin =  post_arguments.get("is_admin", False)
+		phone_number = post_arguments.get("phone_number", None)
 		##Permissions
 		##For the user other 
 		
 		#user = yield db[credentials].find_one({'user_type': user_type, "username": username, "password": password})
-		
 		try:
-			if None in [name, description]:
-				raise Exception("Fields shouldnt be empty")
-
 			if user_type != "superadmin":
-				raise Exception("Only superadmin can nanoskills")
-
-
-
+				raise Exception("Only superadmin can make users")
 
 			##check if email is already registered with us
-			user = yield self.collection.find_one({"name": name})
+			user = yield self.collection.find_one({"email": email})
 			if user:
-				raise Exception("This nanoskill have already been created")
+				raise Exception("User Exists")
 
-			_id = hashlib.sha1(name.encode("utf-8")).hexdigest()
-
+			_id = hashlib.sha1(email.encode("utf-8")).hexdigest()
+			password= hashlib.sha1(password.encode("utf-8")).hexdigest()
+			
 
 			"""
 			if category_permissions:
 					a = CategoriesPermissions()
 					yield a.update_permissions(self.db, user_id, category_permissions)
 			"""
-			nanoskill = {'name': name, "description": description,\
-							 "nanoskill_id": _id,"utc_epoch": time.time(), "indian_time": indian_time()}
-			yield self.collection.insert_one(nanoskill)
+			user = {'first_name': first_name, "last_name": last_name,\
+							 "user_id": _id,"utc_epoch": time.time(), "indian_time": indian_time(), "user_email": email, 
+							 "password": password, "is_admin": is_admin,
+							 "permissions": permissions, "phone_number": phone_number
+							 }
 
-			logger.info("Nanoskill created at %s with nanoskill_id %s"%(indian_time(), _id))
+			yield self.collection.insert_one(user)
+
+			logger.info("User created at %s with user_id %s"%(indian_time(), _id))
 			
 			
 			
@@ -95,9 +97,9 @@ class Nanoskills(tornado.web.RequestHandler):
 
 		##This line has to be added, somehow while inserting nanoskill into the mongo, nanoskill itself got a new _id key
 		##which is not serializable
-		print (nanoskill.pop("_id"))
 		##TODO : implement JWT tokens
-		self.write({"error": False, "success": True, "data": nanoskill})
+		user.pop("_id")
+		self.write({"error": False, "success": True, "data": user})
 		self.finish()
 		return 
 
@@ -107,14 +109,16 @@ class Nanoskills(tornado.web.RequestHandler):
 	@cors
 	@tornado.web.asynchronous
 	@tornado.gen.coroutine
-	def put(self, nanoskill_id):
+	def put(self, user_id):
 		##TODO if a user has to become a superadmin
-		user = yield self.collection.find_one({"nanoskill_id": nanoskill_id}, projection={'_id': False})
+		details = json.loads(self.request.body.decode("utf-8"))
+		
+		user = yield self.collection.find_one({"user_id": user_id}, projection={'_id': False})
 		if user:
 			logger.info(details)
-			result = yield self.collection.update_one({'nanoskill_id': nanoskill_id}, {'$set': details})
+			result = yield self.collection.update_one({'user_id': user_id}, {'$set': details})
 			logger.info(result.modified_count)
-			message = {"error": False, "success": True, "message": "User has been updated"}
+			message = {"error": False, "success": True, "data": "User has been updated"}
 
 		else:
 				message = {"error": True, "success": False, "message": "User doesnt exist"}
@@ -125,14 +129,14 @@ class Nanoskills(tornado.web.RequestHandler):
 	@cors
 	@tornado.web.asynchronous
 	@tornado.gen.coroutine
-	def delete(self, nanoskill_id):
-		result = yield self.collection.find_one({"nanoskill_id": nanoskill_id}, projection={'_id': False})
+	def delete(self, _id):
+		result = yield self.collection.find_one({"user_id": _id}, projection={'_id': False})
 		if result:
-				result = yield self.collection.find_one_and_delete({'nanoskill_id': nanoskill_id})
+				result = yield self.collection.find_one_and_delete({'user_id': _id})
 				logger.info(result)
-				message = {"error": False, "success": True, "message": "nanoskill has been deleted"}
+				message = {"error": False, "success": True, "message": "User has been deleted"}
 		else:
-				message = {"error": True, "success": False, "message": "nanoskill doesnt exist"}
+				message = {"error": True, "success": False, "message": "User doesnt exist"}
 
 		#TODO: delete all parmissions as well
 		self.write(message)
@@ -142,22 +146,24 @@ class Nanoskills(tornado.web.RequestHandler):
 	@cors
 	@tornado.web.asynchronous
 	@tornado.gen.coroutine
-	def get(self, nanoskill_id=None):
+	def get(self, _id=None):
 		#user = self.check_user(user_id)
-		if nanoskill_id:
-				user = yield self.collection.find_one(projection={'_id': False})
+		if _id:
+				result = yield self.collection.find({"user_id": user_id}, projection={'_id': False})
 		else:
-				user = yield self.collection.find(projection={'_id': False}).to_list(length=100)
+				result = yield self.collection.find(projection={'_id': False}).to_list(length=100)
 			
 
-		if user:
-				message = {"error": False, "success": True, "message": None, "data": user}
+		if result:
+				message = {"error": False, "success": True, "message": None, "data": result}
 
 		else:
-				message = {"error": True, "success": False, "message": "No nanoskills exist"}
+				message = {"error": True, "success": False, "message": "No user exist"}
 
 		self.write(message)
-		print (message)
+		pprint(message)
 		self.finish()
 		return 
+
+
 
