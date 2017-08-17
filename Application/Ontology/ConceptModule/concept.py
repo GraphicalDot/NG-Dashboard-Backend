@@ -49,18 +49,22 @@ class Concepts(tornado.web.RequestHandler):
 		concept_name = post_arguments.get("concept_name", None)
 		description = post_arguments.get("description", None)
 		user_type = post_arguments.get("user_type")
-		domain_id = post_arguments.get("domain_id")
+		parent_id = post_arguments.get("parent_id")
+		parent_name = post_arguments.get("parent_name")
 		connections = post_arguments.get("connections", None)
 		bloom_taxonomy = post_arguments.get("bloom_taxonomy", None)
 		difficulty_level= post_arguments.get("difficulty_level", None)
 		required_domains = post_arguments.get("required_domains", None)
+
+		user_name = post_arguments.get("user_name")
+		user_id = post_arguments.get("user_id")
 		##Permissions
 		##For the user other 
 		
 		#user = yield db[credentials].find_one({'user_type': user_type, "username": username, "password": password})
 		
 		try:
-			if None in [concept_name, description]:
+			if None in [concept_name, description, user_name, user_type, parent_id]:
 				raise Exception("Fields shouldnt be empty")
 
 			if user_type != "superadmin":
@@ -82,11 +86,11 @@ class Concepts(tornado.web.RequestHandler):
 					a = CategoriesPermissions()
 					yield a.update_permissions(self.db, user_id, category_permissions)
 			"""
-			concept = {'concept_name': concept_name, "description": description,\
-							 "concept_id": _id,"utc_epoch": time.time(), "indian_time": indian_time(), "domain_id": domain_id, 
+			concept = {'concept_name': concept_name, "description": description, "parent_name": parent_name, \
+							 "concept_id": _id,"utc_epoch": time.time(), "indian_time": indian_time(), "parent_id": parent_id, 
 							 "connections": connections, "difficulty_level": difficulty_level,
-							 "required_domains": required_domains,
-							 "bloom_taxonomy": bloom_taxonomy
+							 "required_domains": required_domains, "user_name": user_name,
+							 "bloom_taxonomy": bloom_taxonomy, "user_id": user_id
 							 }
 			yield self.collection.insert_one(concept)
 
@@ -97,6 +101,8 @@ class Concepts(tornado.web.RequestHandler):
 		
 
 			#TODO: will be used to send email to the user
+			#TODO: Put checks on checking parent_id
+			#TODO put check on the existence of the uers
 			##executor.submit(task, datetime.datetime.now())
 		except Exception as e:
 				logger.error(e)
@@ -155,16 +161,24 @@ class Concepts(tornado.web.RequestHandler):
 	@cors
 	@tornado.web.asynchronous
 	@tornado.gen.coroutine
-	def get(self, domain_id=None):
+	def get(self, concept_id=None):
 		#user = self.check_user(user_id)
-		if domain_id:
-				user = yield self.collection.find({"domain_id": domain_id}, projection={'_id': False})
+		if concept_id:
+				concept = yield self.collection.find({"concept_id": concept_id}, projection={'_id': False})
 		else:
-				user = yield self.collection.find(projection={'_id': False}).to_list(length=100)
+				_result = yield self.collection.find(projection={'_id': False}).to_list(length=100)
+				object_ids = []
+				objects = []
+				for _object in _result:
+					object_ids.append(_object.get("concept_id"))
+					objects.append(_object)
+				result = {"concept": objects,"concept_ids": object_ids}
+
+
 			
 
-		if user:
-				message = {"error": False, "success": True, "message": None, "data": user}
+		if result:
+				message = {"error": False, "success": True, "message": None, "data": result}
 
 		else:
 				message = {"error": True, "success": False, "message": "No nanoskills exist"}

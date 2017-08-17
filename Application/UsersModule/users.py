@@ -46,11 +46,14 @@ class Users(tornado.web.RequestHandler):
 		post_arguments = json.loads(self.request.body.decode("utf-8"))
 		first_name = post_arguments.get("first_name")
 		last_name = post_arguments.get("last_name")
+		user_name = post_arguments.get("user_name")
 		email = post_arguments.get("email")
 		password = post_arguments.get("password")
 		permissions = post_arguments.get("permissions", None)
 		is_admin =  post_arguments.get("is_admin", False)
 		phone_number = post_arguments.get("phone_number", None)
+		user_type = post_arguments.get("user_type", None)
+		
 		##Permissions
 		##For the user other 
 		
@@ -73,8 +76,8 @@ class Users(tornado.web.RequestHandler):
 					a = CategoriesPermissions()
 					yield a.update_permissions(self.db, user_id, category_permissions)
 			"""
-			user = {'first_name': first_name, "last_name": last_name,\
-							 "user_id": _id,"utc_epoch": time.time(), "indian_time": indian_time(), "user_email": email, 
+			user = {'first_name': first_name, "last_name": last_name,"user_name": user_name, \
+							 "user_id": _id,"utc_epoch": time.time(), "indian_time": indian_time(), "email": email, 
 							 "password": password, "is_admin": is_admin,
 							 "permissions": permissions, "phone_number": phone_number
 							 }
@@ -151,8 +154,14 @@ class Users(tornado.web.RequestHandler):
 		if _id:
 				result = yield self.collection.find({"user_id": user_id}, projection={'_id': False})
 		else:
-				result = yield self.collection.find(projection={'_id': False}).to_list(length=100)
-			
+				_result = yield self.collection.find(projection={'_id': False}).to_list(length=100)
+				object_ids = []
+				objects = []
+				for _object in _result:
+					object_ids.append(_object.get("user_id"))
+					objects.append(_object)
+				result = {"users": objects,"user_ids": object_ids}
+
 
 		if result:
 				message = {"error": False, "success": True, "message": None, "data": result}

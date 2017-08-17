@@ -39,6 +39,10 @@ address = "http://localhost:8000"
 from faker import Faker
 fake = Faker()
 
+
+
+
+
 r = requests.post("http://localhost:8000/nanoskills", data=json.dumps({"name": fake.name(), "description": fake.paragraph(), "user_type": "superadmin"}), headers={"Authorization": token})
 r = requests.post("http://localhost:8000/nanoskills", data=json.dumps({"name": fake.name(), "description": fake.paragraph(), "user_type": "superadmin"}), headers={"Authorization": token})
 r = requests.post("http://localhost:8000/nanoskills", data=json.dumps({"name": fake.name(), "description": fake.paragraph(), "user_type": "superadmin"}), headers={"Authorization": token})

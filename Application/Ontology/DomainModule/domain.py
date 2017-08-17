@@ -2,7 +2,7 @@ import tornado.options
 import tornado.web
 from tornado.escape import json_decode as TornadoJsonDecode
 from SettingsModule.settings  import domain_collection_name, indian_time, jwt_secret, \
-									 default_document_limit
+									 default_document_limit, user_collection_name
 from LoggingModule.logging import logger
 import time 
 import hashlib
@@ -26,6 +26,7 @@ class Domains(tornado.web.RequestHandler):
 	def initialize(self):
 		self.db = self.settings["db"]
 		self.collection = self.db[domain_collection_name]
+		self.user_collection = self.db[user_collection_name]
 	
 	
 	@cors
@@ -47,28 +48,37 @@ class Domains(tornado.web.RequestHandler):
 		domain_name = post_arguments.get("domain_name", None)
 		description = post_arguments.get("description", None)
 		user_type = post_arguments.get("user_type")
+		user_id = post_arguments.get("user_id")
+		user_name = post_arguments.get("user_name")
 		##Permissions
 		##For the user other 
 		
 		#user = yield db[credentials].find_one({'user_type': user_type, "username": username, "password": password})
 		
 		try:
-			if None in [domain_name, description]:
+			if None in [domain_name, description, user_id, user_name]:
 				raise Exception("Fields shouldnt be empty")
 
 			if user_type != "superadmin":
 				raise Exception("Only superadmin can make domains")
 
 
+			user = yield self.user_collection.find_one({"user_name": user_name, "user_id": user_id})
+			if not user:
+				raise Exception("The user who is trying to create this domain doesnt exists")
+				
 
 
 			##check if email is already registered with us
-			user = yield self.collection.find_one({"domain_name": domain_name})
-			if user:
+			domain = yield self.collection.find_one({"domain_name": domain_name})
+			if domain:
 				raise Exception("This domain have already been created")
 
 			_id = hashlib.sha1(domain_name.encode("utf-8")).hexdigest()
 
+			#TODO
+			#A permisssion check will be implemented here to check whether this user even have
+			##the permission to make this object
 
 			"""
 			if category_permissions:
@@ -76,7 +86,8 @@ class Domains(tornado.web.RequestHandler):
 					yield a.update_permissions(self.db, user_id, category_permissions)
 			"""
 			domain = {'domain_name': domain_name, "description": description,\
-							 "domain_id": _id,"utc_epoch": time.time(), "indian_time": indian_time()}
+							 "domain_id": _id,"utc_epoch": time.time(), "indian_time": indian_time(), "user_name": user_name, 
+							 "user_id": user_id}
 			yield self.collection.insert_one(domain)
 
 			logger.info("Nanoskill created at %s with domain_id %s"%(indian_time(), _id))
@@ -146,19 +157,26 @@ class Domains(tornado.web.RequestHandler):
 	@cors
 	@tornado.web.asynchronous
 	@tornado.gen.coroutine
-	def get(self, nanoskill_id=None):
+	def get(self, domain_id=None):
 		#user = self.check_user(user_id)
-		if nanoskill_id:
-				user = yield self.collection.find_one(projection={'_id': False})
+		if domain_id:
+				result = yield self.collection.find_one({"domain_id": domain_id}, projection={'_id': False})
 		else:
-				user = yield self.collection.find(projection={'_id': False}).to_list(length=100)
-			
+				_result = yield self.collection.find(projection={'_id': False}).to_list(length=100)
+				object_ids = []
+				objects = []
+				for _object in _result:
+					object_ids.append(_object.get("domain_id"))
+					objects.append(_object)
+				result = {"domains": objects,"domain_ids": object_ids}
 
-		if user:
-				message = {"error": False, "success": True, "message": None, "data": user}
+
+
+		if result:
+				message = {"error": False, "success": True, "message": None, "data": result}
 
 		else:
-				message = {"error": True, "success": False, "message": "No nanoskills exist"}
+				message = {"error": True, "success": False, "message": "No domains exist"}
 
 		self.write(message)
 		print (message)
