@@ -12,11 +12,7 @@ mongo_db_name = "dashboard"
 user_collection_name = "users"
 
 
-domain_permissions	 = "domain_permissions"
-concepts_permissions = "concept_permissions"
-subconcepts_permissions = "subconcept_permissions"
-nanoskill_permissions = "nanoskill_permissions"
-question_permissions = "question_permissions"
+permission_collection_name = "permissions"
 
 
 subject_collection_name = "subjects"
@@ -27,7 +23,7 @@ subconcept_collection_name = "subconcepts"
 nanoskill_collection_name = "nanoskills"
 question_collection_name = "questions"
 
-jwt_secret = "somesecret"
+jwt_secret = "HelloOfAkind###"
 app_super_admin = "nctsuperadmin"
 app_super_admin_pwd = "1234Pacific###"
 app_super_admin_user_id = "nctsuperadmin###"

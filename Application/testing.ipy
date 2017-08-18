@@ -1,0 +1,74 @@
+# coding: utf-8
+app_port = 8000
+mongo_user = "application"
+mongo_pwd = "1234Pacific###"
+mongo_ip = "localhost"
+mongo_port = 27017
+mongo_db_name = "dashboard"
+user_collection_name = "users"
+
+
+permission_collection_name = "permissions"
+
+
+subject_collection_name = "subjects"
+board_collection_name = "boards"
+domain_collection_name = "domains"
+concept_collection_name = "concepts"
+subconcept_collection_name = "subconcepts"
+nanoskill_collection_name = "nanoskills"
+question_collection_name = "questions"
+
+jwt_secret = "HelloOfAkind###"
+app_super_admin = "nctsuperadmin"
+app_super_admin_pwd = "1234Pacific###"
+app_super_admin_user_id = "nctsuperadmin###"
+
+
+##change this if you want all get requests for list to return more than 10 results
+default_document_limit = 10
+
+#uri = "mongodb://user:pass@localhost:27017/database_name"
+uri = "mongodb://%s:%s@%s:%s/%s"%(mongo_user, mongo_pwd, mongo_ip, mongo_port, "admin")
+import pymongo
+connection = pymongo.MongoClient(uri)
+db = connection["dashboard"]
+users = db["users"]
+domains = db["domains"]
+concepts = db["concepts"]
+import requests, Json
+import json
+from faker import Faker
+from pprint import pprint
+import random
+fake = Faker()
+r = requests.post("http://localhost:8000/users", data=json.dumps({"first_name": fake.first_name(), "last_name": fake.last_name(), "phone_number": fake.phone_number(), "email": fake.email(), "password": fake.password(), "create_domain": True , "user_type": "superadmin"}))
+r.json()
+r = requests.post("http://localhost:8000/users", data=json.dumps({"first_name": fake.first_name(), "last_name": fake.last_name(), "phone_number": fake.phone_number(), "email": fake.email(), "password": fake.password(), "create_domain": True , "user_type": "admin"}))
+r.json()
+r = requests.post("http://localhost:8000/users", data=json.dumps({"first_name": fake.first_name(), "last_name": fake.last_name(), "phone_number": fake.phone_number(), "email": fake.email(), "password": fake.password(), "create_domain": True , "user_type": "superadmin", "user_secret": jwt_secret}))
+r.json()
+superadmin = r.json()["data"]
+r = requests.post("http://localhost:8000/users", data=json.dumps({"first_name": fake.first_name(), "last_name": fake.last_name(), "phone_number": fake.phone_number(), "email": fake.email(), "password": fake.password(), "create_domain": False , "user_type": "superadmin", "user_secret": jwt_secret}))
+r.json()
+superadmin_no_create_domains = r.json()["data"]
+r = requests.post("http://localhost:8000/users", data=json.dumps({"first_name": fake.first_name(), "last_name": fake.last_name(), "phone_number": fake.phone_number(), "email": fake.email(), "password": fake.password(), "create_domain": False , "user_type": "admin", "user_secret": jwt_secret}))
+r.json()
+admin_no_create_domains = r.json()["data"]
+r = requests.post("http://localhost:8000/users", data=json.dumps({"first_name": fake.first_name(), "last_name": fake.last_name(), "phone_number": fake.phone_number(), "email": fake.email(), "password": fake.password(), "create_domain": True , "user_type": "admin", "user_secret": jwt_secret}))
+admin_create_domains = r.json()["data"]
+r = requests.post("http://localhost:8000/users", data=json.dumps({"first_name": fake.first_name(), "last_name": fake.last_name(), "phone_number": fake.phone_number(), "email": fake.email(), "password": fake.password(), "create_domain": True, "user_secret": jwt_secret}))
+r.json()
+r = requests.post("http://localhost:8000/users", data=json.dumps({"first_name": fake.first_name(), "last_name": fake.last_name(), "phone_number": fake.phone_number(), "email": fake.email(), "password": fake.password(), "create_domain": True, "user_secret": jwt_secret}))
+r.json()
+r = requests.post("http://localhost:8000/users", data=json.dumps({"first_name": fake.first_name(), "last_name": fake.last_name(), "phone_number": fake.phone_number(), "email": fake.email(), "password": fake.password(), "create_domain": True, "user_secret": jwt_secret}))
+r.json()
+r = requests.post("http://localhost:8000/users", data=json.dumps({"first_name": fake.first_name(), "last_name": fake.last_name(), "phone_number": fake.phone_number(), "email": fake.email(), "password": fake.password(), "create_domain": True, "user_secret": jwt_secret}))
+r.json()
+r = requests.post("http://localhost:8000/users", data=json.dumps({"first_name": fake.first_name(), "last_name": fake.last_name(), "phone_number": fake.phone_number(), "email": fake.email(), "password": fake.password(), "create_domain": True, "user_secret": jwt_secre}))
+r = requests.post("http://localhost:8000/users", data=json.dumps({"first_name": fake.first_name(), "last_name": fake.last_name(), "phone_number": fake.phone_number(), "email": fake.email(), "password": fake.password(), "create_domain": True, "uer_secret": jwt_secret}))
+r.json()
+r = requests.post("http://localhost:8000/users", data=json.dumps({"first_name": fake.first_name(), "last_name": fake.last_name(), "phone_number": fake.phone_number(), "email": fake.email(), "password": fake.password(), "create_domain": True, "user_secret": jwt_secret}))
+r.json()
+pwd
+%save -r testing 1-1000

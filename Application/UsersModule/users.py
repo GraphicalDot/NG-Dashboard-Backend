@@ -48,22 +48,25 @@ class Users(tornado.web.RequestHandler):
 		post_arguments = json.loads(self.request.body.decode("utf-8"))
 		first_name = post_arguments.get("first_name")
 		last_name = post_arguments.get("last_name")
-		user_name = post_arguments.get("user_name")
+		username = post_arguments.get("username", None)
 		email = post_arguments.get("email")
 		password = post_arguments.get("password")
 		permissions = post_arguments.get("permissions", None)
-		is_admin =  post_arguments.get("is_admin", False)
 		phone_number = post_arguments.get("phone_number", None)
 		user_type = post_arguments.get("user_type", None)
 		create_domain = post_arguments.get("create_domain", None)
-		
+		user_secret = post_arguments.get("user_secret", None)
 		##Permissions
 		##For the user other 
 		
 		#user = yield db[credentials].find_one({'user_type': user_type, "username": username, "password": password})
 		try:
-			if user_type != "superadmin":
-				raise Exception("Only superadmin can make users")
+			if None in ["user_secret", "username", "email" ]:
+				raise Exception("Fields shouldnt be empty")
+				
+			if user_secret != jwt_secret:
+				raise Exception("your secret is wrong")
+				
 
 			##check if email is already registered with us
 			user = yield self.collection.find_one({"email": email})
@@ -79,9 +82,9 @@ class Users(tornado.web.RequestHandler):
 					a = CategoriesPermissions()
 					yield a.update_permissions(self.db, user_id, category_permissions)
 			"""
-			user = {'first_name': first_name, "last_name": last_name,"user_name": user_name, \
+			user = {'first_name': first_name, "last_name": last_name,"username": username, \
 							 "user_id": _id,"utc_epoch": time.time(), "indian_time": indian_time(), "email": email, 
-							 "password": password, "is_admin": is_admin,
+							 "password": password, "user_type": user_type,
 							 "permissions": permissions, "phone_number": phone_number, "create_domain": create_domain
 							 }
 
@@ -173,7 +176,6 @@ class Users(tornado.web.RequestHandler):
 				message = {"error": True, "success": False, "message": "No user exist"}
 
 		self.write(message)
-		pprint(message)
 		self.finish()
 		return 
 
