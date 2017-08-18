@@ -67,22 +67,68 @@ def DomainPermissions(tornado.web.RequestHandler):
 		return 
 
 
+
+"""
+user: 
+	permissions: 
+			domains:
+				domain_id:
+					{"edit": True, "delete": False, "add_child": False, "get": True}
+				domain_id:
+					{"edit": True, "delete": False, "add_child": False, "get": True}
+			concepts:
+				concept_id:
+					{"edit": True, "delete": False, "add_child": False, "get": True}
+													
+
+
+
+
+
+domain: 
+	permissions:
+		user_id: 
+			{"edit": True, "delete": False, "add_child": False, "get": True}
+		user_id:
+			{"edit": False, "delete": False, "add_child": True, "get": True}
+		
+
+	parent_id: None
+
+
+
+
+concept: 
+	permissions:
+		user_id: 
+			{"edit": True, "delete": False, "add_child": False, "get": True}
+		user_id:
+			{"edit": False, "delete": False, "add_child": True, "get": True}
+		
+
+	parent_id: domain_id
+
+Rules:
+	1. To add a child to a parent, A user must have a add_child permission on the parent
+	2. A user can only pass paermission to a user, if he himself have those permissions
+	3. If a user delete something, It must first be approved by superadmin
+
+"""
+
 #@auth
 class Domains(tornado.web.RequestHandler):
 
 	def initialize(self):
 		self.db = self.settings["db"]
-		self.collection = self.db[domain_collection_name]
+		self.parent_collection = None
+		self.module_collection = self.db[domain_collection_name]
 		self.user_collection = self.db[user_collection_name]
-		self.concept_collection = self.db[concept_collection_name]
-		self.subconcept_collection = self.db[subconcept_collcection_name]
-		self.nanoskill_collection = self.db[nanoskill_collcection_name]
-		self.questions_collection = self.db[question_collcection_name]
-		self.domain_permissions = self.db[domain_permissions]
-		self.concept_permissions = self.db[concept_permissions]
-		self.subconcept_permissions = self.db[subconcept_permissions]
-		self.nanoskill_permissions = self.db[nanoskill_permissions]
-		self.question_permissions = self.db[question_permissions]
+		self.module_name = "domain"
+		self.child_collection = [self.db[concept_collection_name], 
+								self.db[subconcept_collection_name],
+								self.db[nanoskill_collection_name], 
+								self.db[question_collcection_name]
+									]
 
 	@cors
 	@tornado.web.asynchronous
@@ -100,7 +146,7 @@ class Domains(tornado.web.RequestHandler):
 			raise Exception("Dude! I need some data")
 		print (self.request.body)
 		post_arguments = json.loads(self.request.body.decode("utf-8"))
-		domain_name = post_arguments.get("domain_name", None)
+		name = post_arguments.get("name", None)
 		description = post_arguments.get("description", None)
 		user_type = post_arguments.get("user_type")
 		user_id = post_arguments.get("user_id")

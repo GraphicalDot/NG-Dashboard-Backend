@@ -10,13 +10,9 @@ mongo_ip = "localhost"
 mongo_port = 27017
 mongo_db_name = "dashboard"
 user_collection_name = "users"
-usr_domain_permissions = "usr_domain_permissions"
-usr_concept_permissions = "usr_concept_permissions"
-usr_subconcept_permissions = "usr_subconcept_permissions"
-usr_nanoskill_permissions = "usr_nanoskill_permissions"
-usr_question_permissions = "usr_question_permissions"
 
-domain_permissions = "domain_permissions"
+
+domain_permissions	 = "domain_permissions"
 concepts_permissions = "concept_permissions"
 subconcepts_permissions = "subconcept_permissions"
 nanoskill_permissions = "nanoskill_permissions"

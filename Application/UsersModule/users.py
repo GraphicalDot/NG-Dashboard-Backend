@@ -52,10 +52,10 @@ class Users(tornado.web.RequestHandler):
 		email = post_arguments.get("email")
 		password = post_arguments.get("password")
 		permissions = post_arguments.get("permissions", None)
-		root_permission = post_arguments.get("root_permission")
 		is_admin =  post_arguments.get("is_admin", False)
 		phone_number = post_arguments.get("phone_number", None)
 		user_type = post_arguments.get("user_type", None)
+		create_domain = post_arguments.get("create_domain", None)
 		
 		##Permissions
 		##For the user other 
@@ -82,7 +82,7 @@ class Users(tornado.web.RequestHandler):
 			user = {'first_name': first_name, "last_name": last_name,"user_name": user_name, \
 							 "user_id": _id,"utc_epoch": time.time(), "indian_time": indian_time(), "email": email, 
 							 "password": password, "is_admin": is_admin,
-							 "permissions": permissions, "phone_number": phone_number, "root_permission": root_permission
+							 "permissions": permissions, "phone_number": phone_number, "create_domain": create_domain
 							 }
 
 			yield self.collection.insert_one(user)
