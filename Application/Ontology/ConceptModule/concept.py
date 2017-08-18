@@ -2,7 +2,8 @@ import tornado.options
 import tornado.web
 from tornado.escape import json_decode as TornadoJsonDecode
 from SettingsModule.settings  import concept_collection_name, indian_time, jwt_secret, \
-									 default_document_limit, domain_collection_name
+									 default_document_limit, domain_collection_name, \
+									 domain_permissions, concept_permissions
 from LoggingModule.logging import logger
 import time 
 import hashlib
@@ -21,6 +22,58 @@ reader = codecs.getreader("utf-8")
 
 
 
+
+def ConceptPermissions(tornado.web.RequestHandler):
+	def initialize(self):
+		self.db = self.settings["db"]
+		self.collection = self.db[domain_collection_name]
+		self.user_collection = self.db[user_collection_name]
+		self.concept_permissions = self.db[concept_permissions]
+		self.domain_permissions = self.db[domain_permissions]
+		self.subconcept_permissions = self.db[subconcept_permissions]
+
+
+	def post(self):
+		post_arguments = json.loads(self.request.body.decode("utf-8"))
+		granter_id =post_arguments.get("granter_id") 
+		concept_id = post_arguments.get("concept_id")
+		user_id = post_arguments.get("user_id")
+		permissions = post_arguments.get("permissions")
+		#permission = {"add_child": True, "edit": True, "delete": True, "get": True}
+
+		##add_chld permission will be checked in concept creation
+		#edit includes changin permissions as well
+		if granter_id == "superadmin":
+			yield self.domain_permissions.insert({"user_id": user_id, "domain_id": domain_id})
+
+		user = yield self.user_collection.find_one({"user_id": user_id})
+		
+		if user["is_admin"]:
+			yield self.concept_permissions.insert({"user_id": user_id, "concept_id": concept_id})
+			
+
+		try:
+			if not yield self.domain_permissions.find_one({"user_id": user_id, "domain_id": domain_id})["permissions"]["edit"]:
+				raise Exception ("Insufficient permissions")
+
+			yield self.domain_permissions.insert({"user_id": user_id, "domain_id": domain_id, "granter_id": granter_id, "permissions": permissions})
+
+		except Exception as e:
+				logger.error(e)
+				self.set_status(400)
+				self.write({"error": True, "success": False, "token": None, "message": e.__str__()})
+				self.finish()
+				return 
+
+		##This line has to be added, somehow while inserting nanoskill into the mongo, nanoskill itself got a new _id key
+		##which is not serializable
+		##TODO : implement JWT tokens
+		self.write({"error": False, "success": True, "data": domain})
+		self.finish()
+		return 
+
+
+
 #@auth
 class Concepts(tornado.web.RequestHandler):
 
@@ -28,6 +81,8 @@ class Concepts(tornado.web.RequestHandler):
 		self.db = self.settings["db"]
 		self.collection = self.db[concept_collection_name]
 		self.domain_collection = self.db[domain_collection_name]
+		self.domain_permissions = self.db[domain_permissions]
+		self.concept_permissions = self.db[concept_permissions]
 	
 	
 	@cors
@@ -78,6 +133,9 @@ class Concepts(tornado.web.RequestHandler):
 			if user:
 				raise Exception("This domain have already been created")
 
+			if not yield self.domain_permissions({"user_id": user_id, "domain_id": parent_id})["permissions"]["add_child"]:
+				raise Exception("The user doesnt have sufficient permissions to create concepts for this domain")
+
 			_id = hashlib.sha1(concept_name.encode("utf-8")).hexdigest()
 
 
@@ -95,7 +153,9 @@ class Concepts(tornado.web.RequestHandler):
 			yield self.collection.insert_one(concept)
 
 			logger.info("Concept created at %s with concept_id %s"%(indian_time(), _id))
-			
+			yield self.concept_permissions.insert({"user_id": user_id, "parent_id": parent_id, "concept_id": _id
+				 "granter_id": user_id, "permissions": {"add_child": True, "edit": True, "delete": True, "get": True}})
+
 			
 			
 		
@@ -172,7 +232,7 @@ class Concepts(tornado.web.RequestHandler):
 				for _object in _result:
 					object_ids.append(_object.get("concept_id"))
 					objects.append(_object)
-				result = {"concept": objects,"concept_ids": object_ids}
+				result = {"concepts": objects,"concept_ids": object_ids}
 
 
 			
