@@ -21,12 +21,11 @@ dictLogConfig = {
         				'stream': 'ext://sys.stdout',
     				},
     				'main_file': {
-          				'level': 'INFO',
+          				'level': 'DEBUG',
          				'class': 'logging.handlers.WatchedFileHandler',
             			'formatter': 'detailed',
             			'filename': os.path.join(LOG_PATH, 'main.log'),
         			},
-
         			'error_file': {
             			'level': 'ERROR',
             			'class': 'logging.handlers.WatchedFileHandler',

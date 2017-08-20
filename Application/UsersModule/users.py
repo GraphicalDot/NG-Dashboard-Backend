@@ -58,10 +58,11 @@ class Users(tornado.web.RequestHandler):
 		user_secret = post_arguments.get("user_secret", None)
 		##Permissions
 		##For the user other 
-		
+
+		pprint (username)		
 		#user = yield db[credentials].find_one({'user_type': user_type, "username": username, "password": password})
 		try:
-			if None in ["user_secret", "username", "email" ]:
+			if None in [user_secret, username,  email ]:
 				raise Exception("Fields shouldnt be empty")
 				
 			if user_secret != jwt_secret:
@@ -90,11 +91,6 @@ class Users(tornado.web.RequestHandler):
 
 			yield self.collection.insert_one(user)
 
-			logger.info("User created at %s with user_id %s"%(indian_time(), _id))
-			
-			
-			
-		
 
 			#TODO: will be used to send email to the user
 			##executor.submit(task, datetime.datetime.now())
