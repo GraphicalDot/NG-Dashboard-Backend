@@ -17,6 +17,7 @@ from AuthenticationModule.authentication import auth
 import codecs
 
 from generic.cors import cors
+from pprint import pprint
 reader = codecs.getreader("utf-8")
 
 """
@@ -31,7 +32,8 @@ new_collection
 """
 
 @tornado.gen.coroutine
-def add_permission(user_id, module_id, module_name, module_type, rest_parameters, parent_id, granter_id, permission_collection):
+def add_permission(user_id, module_id, module_name, module_type, rest_parameters, parent_id, 
+					granter_id, permission_collection, deletion_approval, creation_approval):
 		for (permission, value) in rest_parameters.items():
 
 			yield permission_collection.update_one({"user_id": user_id, 
@@ -39,8 +41,8 @@ def add_permission(user_id, module_id, module_name, module_type, rest_parameters
 											"module_name": module_name,
 											"module_type": module_type, 
 											"parent_id": parent_id,
-											"granter_id": granter_id,
-											permission: value}, upsert=False)
+											"granter_id": granter_id}, 
+											{"$set": {permission: value, "deletion_approval": deletion_approval, "creation_approval": creation_approval}}, upsert=True)
 
 		return 
 
@@ -201,18 +203,21 @@ class Generic(tornado.web.RequestHandler):
 				raise Exception("Fields shouldnt be empty")
 
 			user = yield self.user_collection.find_one({"user_id": user_id})
+			pprint (user)
 			if not user:
 				raise Exception("The user who is trying to create this domain doesnt exists")
 				
 
 
 			## checking permissions
-			if self.module_type == "domain":
-				if not user["create_domain"]:
+			if user["user_type"] != "superadmin" or  not user["user_type"] != "admin":
+				pprint (user["user_type"])
+				if self.module_type == "domain":
+					if not user["create_domain"]:
 						raise Exception("The user who is trying to create this domain have insufficient permissions")
 			
-			if not user["user_type"] == "superadmin" or  not user["user_type"] == "admin":
-				dummy = yield self.permission_collection.find_one({"module_id": parent_id, "user_id": user_id})["add_chid"]
+			if user["user_type"] != "superadmin" or  not user["user_type"] != "admin":
+				dummy = yield self.permission_collection.find_one({"module_id": parent_id, "user_id": user_id})["add_child"]
 				if not dummy:
 						raise Exception("The user who is trying to create this domain have insufficient permissions")
 						
@@ -224,8 +229,8 @@ class Generic(tornado.web.RequestHandler):
 
 			_id = hashlib.sha1(module_name.encode("utf-8")).hexdigest()
 			
-			module_id = "%s-%s"%(self.module_name, _id)
-			if self.parent_collection_name:
+			module_id = "%s-%s"%(module_name, _id)
+			if self.parent_collection:
 					parent_document = yield self.parent_collection.find_one({"module_id": parent_id})
 					parent_document["parents"].append({"module_id": parent_id,
 																"module_name": parent_document["module_name"] })
@@ -243,10 +248,10 @@ class Generic(tornado.web.RequestHandler):
 			##the permission to make this object
 
 			module = {'module_name': module_name, "description": description, "parent_id": parent_id, "parents": parents,
-							 "module_id": module_id, "utc_epoch": time.time(), "indian_time": indian_time(), "user_name": user["user_name"], 
+							 "module_id": module_id, "utc_epoch": time.time(), "indian_time": indian_time(), "username": user["username"],
 							 "user_id": user_id, "status": True, "deletion_approval": False, "creation_approval": False, 
-							 "module_name": self.module_name, "module_type": self.module_type, "child_collection_name": self.child_collection_name}
-			yield self.module_collection.insert_one(domain)
+							  "module_type": self.module_type, "child_collection_name": self.child_collection_name}
+			yield self.module_collection.insert_one(module)
 
 
 
@@ -254,7 +259,7 @@ class Generic(tornado.web.RequestHandler):
 			
 			yield add_permission(user_id, module_id, module_name, self.module_type,
 								 {"edit": True, "delete": False, "add_child": False, "get": True}, 
-								 parent_id, granter_id, user_id , self.permission_collection)
+								 parent_id, user_id, self.permission_collection, False, False)
 			
 			
 		
@@ -272,7 +277,7 @@ class Generic(tornado.web.RequestHandler):
 		##which is not serializable
 		##TODO : implement JWT tokens
 		module.pop("_id")
-		self.write({"error": False, "success": True, "data": domain})
+		self.write({"error": False, "success": True, "data": module})
 		self.finish()
 		return 
 
@@ -296,7 +301,7 @@ class Generic(tornado.web.RequestHandler):
 				domain = yield self.collection.find_one({"domain_id": domain_id}, projection={'_id': False})
 		if domain:
 			logger.info(details)
-			result = yield self.collection.update_one({'domain_id': domain_id}, {'$set': details})
+			result = yield self.collection.update_one({'domain_id': domain_id}, {'$set': details}, upsert=False)
 			logger.info(result.modified_count)
 			message = {"error": False, "success": True, "data": "Domain has been updated"}
 
@@ -343,27 +348,50 @@ class Generic(tornado.web.RequestHandler):
 	@tornado.gen.coroutine
 	def get(self, module_id):
 		#user = self.check_user(user_id)
-		post_arguments = json.loads(self.request.body.decode("utf-8"))
-		user_id = post_arguments.get("user_id", None) ##who created this category
-		if module_id:
-			result = self.permission_collection.find_one({"user_id": user_id, "domain_id": domain_id, "get": True})
-			if not result :
-				result = "Insufficient permissions"
-			
-		else:
-			result = self.permission_collection.find({"user_id": user_id, "module_type": self.module_type ,"get": True}, 
-						projection={"_id": False, "module_id": True }).to_list(length=100)
-			
-			module_ids = result
-			modules = []
-			for _id in module_ids:
-				doc = yield self.module_collection.find_one({"module_id": module_id}, projection={"_id": False} )
-				modules.append(doc)
-			result = {"module_ids": module_ids, "modules": modules}
+		get_arguments = json.loads(self.request.body.decode("utf-8"))
+		user_id = get_arguments.get("user_id", None) ##who created this category
+		
 
-		message = {"error": True, "success": False, "message": None, "data": result}
+		user = yield self.user_collection.find_one({"user_id": user_id})
+
+		##Now if a  a user is superadmin, he will get all the modules whether they are approved or not
+		if user["user_type"] == "superadmin":
+				result = yield self.module_collection.find({"module_id": module_id})
+				if not result:
+					message = "No %ss exists"%self.module_type
+					result = []
+					
+
+		##if a user is admin, he will get all the modules only if they are approved
+		if user["user_type"] == "admin":
+				result = yield self.module_collection.find({"module_id": module_id, "creation_approval" : True})
+				if not result:
+					
+					message = "No %ss exists"%self.module_type
+					result = []
+
+
+		if user["user_type"] != "superadmin" or user["user_type"] != "admin":
+			##if a user is neither admin or superadmin, a permission check has to be done to check the get: true for this user_id
+			result = yield self.permission_collection.find_one({"user_id": user_id, "module_id": module_id, "get": True, 
+								"module_type": self.module_type ,"get": True, "deletion_approval": False, 
+						"creation_approval": True})
+
+			if not result :
+				message = "Insufficient permissions for any %ss"%self.module_type
+				result = []
+
+			else:
+				modules = []
+				for document in result:
+					doc = yield self.module_collection.find_one({"module_id": document.get("module_id")}, projection={"_id": False} )
+					modules.append(doc)
+				result = {"module_ids": module_ids, "modules": modules}
+				message = "success"
+
+		message = {"error": True, "success": False, "message": message, "data": result}
 		self.write(message)
-		print (message)
+		pprint (message)
 		self.finish()
 		return 
 

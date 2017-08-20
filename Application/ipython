@@ -1,0 +1,199 @@
+app_port = 8000
+mongo_user = "application"
+mongo_pwd = "1234Pacific###"
+mongo_ip = "localhost"
+mongo_port = 27017
+mongo_db_name = "dashboard"
+user_collection_name = "users"
+
+
+permission_collection_name = "permissions"
+
+
+subject_collection_name = "subjects"
+board_collection_name = "boards"
+domain_collection_name = "domains"
+concept_collection_name = "concepts"
+subconcept_collection_name = "subconcepts"
+nanoskill_collection_name = "nanoskills"
+question_collection_name = "questions"
+
+jwt_secret = "HelloOfAkind###"
+app_super_admin = "nctsuperadmin"
+app_super_admin_pwd = "1234Pacific###"
+app_super_admin_user_id = "nctsuperadmin###"
+
+
+##change this if you want all get requests for list to return more than 10 results
+default_document_limit = 10
+
+#uri = "mongodb://user:pass@localhost:27017/database_name"
+uri = "mongodb://%s:%s@%s:%s/%s"%(mongo_user, mongo_pwd, mongo_ip, mongo_port, "admin")
+import pymongo
+connection = pymongo.MongoClient(uri)
+db = connection["dashboard"]
+users = db["users"]
+domains = db["domains"]
+concepts = db["concepts"]
+import requests, Json
+import json
+from faker import Faker
+from pprint import pprint
+import random
+fake = Faker()
+r = requests.post("http://localhost:8000/users", data=json.dumps({"first_name": fake.first_name(), "last_name": fake.last_name(), "phone_number": fake.phone_number(), "email": fake.email(), "password": fake.password(), "create_domain": True , "user_type": "superadmin"}))
+r.json()
+{'error': True,
+ 'message': 'your secret is wrong',
+ 'success': False,
+ 'token': None}
+r = requests.post("http://localhost:8000/users", data=json.dumps({"first_name": fake.first_name(), "last_name": fake.last_name(), "phone_number": fake.phone_number(), "email": fake.email(), "password": fake.password(), "create_domain": True , "user_type": "admin"}))
+r.json()
+{'error': True,
+ 'message': 'Only superadmin can make users',
+ 'success': False,
+ 'token': None}
+r = requests.post("http://localhost:8000/users", data=json.dumps({"first_name": fake.first_name(), "last_name": fake.last_name(), "phone_number": fake.phone_number(), "email": fake.email(), "password": fake.password(), "create_domain": True , "user_type": "superadmin", "user_secret": jwt_secret}))
+r.json()
+{'data': {'create_domain': True,
+  'email': 'fpearson@yahoo.com',
+  'first_name': 'Jodi',
+  'indian_time': '2017-08-19 04-56-1503098777',
+  'last_name': 'Smith',
+  'password': '2254ade97bdb8f94ada02887428b745f256fad22',
+  'permissions': None,
+  'phone_number': '1-138-987-8972x7705',
+  'user_id': '1b52ece6bba82ac9f98d3fd4b3758b3db37018b6',
+  'user_name': None,
+  'user_type': 'superadmin',
+  'utc_epoch': 1503098777.119761},
+ 'error': False,
+ 'success': True}
+superadmin = r.json()["data"]
+r = requests.post("http://localhost:8000/users", data=json.dumps({"first_name": fake.first_name(), "last_name": fake.last_name(), "phone_number": fake.phone_number(), "email": fake.email(), "password": fake.password(), "create_domain": False , "user_type": "superadmin", "user_secret": jwt_secret}))
+r.json()
+{'data': {'create_domain': False,
+  'email': 'lopezbradley@bender.com',
+  'first_name': 'Jessica',
+  'indian_time': '2017-08-19 04-57-1503098830',
+  'last_name': 'Adams',
+  'password': 'bd9d60910b61955de504b3536d20e90a2c55b7f0',
+  'permissions': None,
+  'phone_number': '+82(3)2501861610',
+  'user_id': '2efb345934b030a815fb2f157bd9cac75570190f',
+  'user_name': None,
+  'user_type': 'superadmin',
+  'utc_epoch': 1503098830.868606},
+ 'error': False,
+ 'success': True}
+superadmin_no_create_domains = r.json()["data"]
+r = requests.post("http://localhost:8000/users", data=json.dumps({"first_name": fake.first_name(), "last_name": fake.last_name(), "phone_number": fake.phone_number(), "email": fake.email(), "password": fake.password(), "create_domain": False , "user_type": "admin", "user_secret": jwt_secret}))
+r.json()
+{'data': {'create_domain': False,
+  'email': 'amy68@nelson.com',
+  'first_name': 'Holly',
+  'indian_time': '2017-08-19 04-59-1503098995',
+  'last_name': 'Gordon',
+  'password': 'f4ce61e9c3a0be97523d366c6554d7f64744bc35',
+  'permissions': None,
+  'phone_number': '+28(7)7292350156',
+  'user_id': '67c8c84d8a5f4349fd4b51dc71baa1cc211be17e',
+  'user_name': None,
+  'user_type': 'admin',
+  'utc_epoch': 1503098995.1855347},
+ 'error': False,
+ 'success': True}
+admin_no_create_domains = r.json()["data"]
+r = requests.post("http://localhost:8000/users", data=json.dumps({"first_name": fake.first_name(), "last_name": fake.last_name(), "phone_number": fake.phone_number(), "email": fake.email(), "password": fake.password(), "create_domain": True , "user_type": "admin", "user_secret": jwt_secret}))
+admin_create_domains = r.json()["data"]
+r = requests.post("http://localhost:8000/users", data=json.dumps({"first_name": fake.first_name(), "last_name": fake.last_name(), "phone_number": fake.phone_number(), "email": fake.email(), "password": fake.password(), "create_domain": True, "user_secret": jwt_secret}))
+r.json()
+{'data': {'create_domain': True,
+  'email': 'storres@hanna.org',
+  'first_name': 'Mike',
+  'indian_time': '2017-08-19 05-00-1503099043',
+  'last_name': 'Stephens',
+  'password': 'b76fed6e45675059cff9ccbeea0f76fb041b31df',
+  'permissions': None,
+  'phone_number': '1-939-726-8826x406',
+  'user_id': '18f8c971a37de9b6f1c35bb56630b63fa62ca394',
+  'user_name': None,
+  'user_type': None,
+  'utc_epoch': 1503099043.9299264},
+ 'error': False,
+ 'success': True}
+r = requests.post("http://localhost:8000/users", data=json.dumps({"first_name": fake.first_name(), "last_name": fake.last_name(), "phone_number": fake.phone_number(), "email": fake.email(), "password": fake.password(), "create_domain": True, "user_secret": jwt_secret}))
+r.json()
+{'data': {'create_domain': True,
+  'email': 'angelareed@yahoo.com',
+  'first_name': 'Andrew',
+  'indian_time': '2017-08-19 05-03-1503099232',
+  'last_name': 'Wilson',
+  'password': 'c58b2ab310e7636e57fb23bc901aa3c7a059fd73',
+  'permissions': None,
+  'phone_number': '1-314-974-9559x61285',
+  'user_id': '4db630ff591f2089da329d1ecdf6fbd8f2dde0ad',
+  'user_type': None,
+  'username': None,
+  'utc_epoch': 1503099232.7788167},
+ 'error': False,
+ 'success': True}
+r = requests.post("http://localhost:8000/users", data=json.dumps({"first_name": fake.first_name(), "last_name": fake.last_name(), "phone_number": fake.phone_number(), "email": fake.email(), "password": fake.password(), "create_domain": True, "user_secret": jwt_secret}))
+r.json()
+{'data': {'create_domain': True,
+  'email': 'rebeccagarner@foster-bailey.com',
+  'first_name': 'Kyle',
+  'indian_time': '2017-08-19 05-04-1503099261',
+  'last_name': 'Murphy',
+  'password': '27c4c585b9f07b8a4e979db2babe9e73308a5ead',
+  'permissions': None,
+  'phone_number': '+77(3)1247204591',
+  'user_id': '3cc32082315d34f24921200e161ee3729dff7375',
+  'user_type': None,
+  'username': None,
+  'utc_epoch': 1503099261.580399},
+ 'error': False,
+ 'success': True}
+r = requests.post("http://localhost:8000/users", data=json.dumps({"first_name": fake.first_name(), "last_name": fake.last_name(), "phone_number": fake.phone_number(), "email": fake.email(), "password": fake.password(), "create_domain": True, "user_secret": jwt_secret}))
+r.json()
+{'data': {'create_domain': True,
+  'email': 'ibuchanan@hotmail.com',
+  'first_name': 'Rebecca',
+  'indian_time': '2017-08-19 05-05-1503099348',
+  'last_name': 'Rowland',
+  'password': 'af20151eae598887d00e2ec487a24ad77a096373',
+  'permissions': None,
+  'phone_number': '1-391-235-4679x1726',
+  'user_id': '9de3358287b02936b162a75d306af5db64e5193b',
+  'user_type': None,
+  'username': None,
+  'utc_epoch': 1503099348.162588},
+ 'error': False,
+ 'success': True}
+r = requests.post("http://localhost:8000/users", data=json.dumps({"first_name": fake.first_name(), "last_name": fake.last_name(), "phone_number": fake.phone_number(), "email": fake.email(), "password": fake.password(), "create_domain": True, "user_secret": jwt_secre}))
+r = requests.post("http://localhost:8000/users", data=json.dumps({"first_name": fake.first_name(), "last_name": fake.last_name(), "phone_number": fake.phone_number(), "email": fake.email(), "password": fake.password(), "create_domain": True, "uer_secret": jwt_secret}))
+r.json()
+{'error': True,
+ 'message': 'your secret is wrong',
+ 'success': False,
+ 'token': None}
+r = requests.post("http://localhost:8000/users", data=json.dumps({"first_name": fake.first_name(), "last_name": fake.last_name(), "phone_number": fake.phone_number(), "email": fake.email(), "password": fake.password(), "create_domain": True, "user_secret": jwt_secret}))
+r.json()
+{'data': {'create_domain': True,
+  'email': 'smithsavannah@yahoo.com',
+  'first_name': 'Steven',
+  'indian_time': '2017-08-19 05-06-1503099368',
+  'last_name': 'Martinez',
+  'password': '6836bbe4ed6223628d859fc1b9a38de2275f6669',
+  'permissions': None,
+  'phone_number': '1-147-353-7855',
+  'user_id': '647217d8d627db501f6f23b17d1b190a00be6470',
+  'user_type': None,
+  'username': None,
+  'utc_epoch': 1503099368.061063},
+ 'error': False,
+ 'success': True}
+pwd
+'/home/kaalitwo/Programs/Python/NG-Dashboard-Backend/NG-Dashboard-Backend/Application'
+%save -r testing 1-1000
+%history -o -f ipython
