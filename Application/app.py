@@ -26,7 +26,7 @@ from SignupModule.signup import Signup, SignupApplicant, Users
 from SettingsModule.settings import mongo_db
 from Ontology.DomainModule.domain import Domains
 from Ontology.DomainModule.domain import DomainPermissions
-from Ontology.ConceptModule.concept import Concepts
+from Ontology.ConceptModule.concept import Concepts, ConceptPermissions
 from UsersModule.users import Users
 #from QuestionsModule.questions import Question, Questions, QuestionPermissions
 
@@ -57,14 +57,13 @@ app_urls = [
 
             (r"/domains$", Domains),
 			(r"/domains/(\d+$)", Domains),
+			(r"/domainpermissions/(\d+$)", DomainPermissions),
 			(r"/domains/([a-zA-Z0-9_.-]*$)", Domains),
 
-            (r"/domainpermissions$", DomainPermissions),
-			(r"/domainpermissions/(\d+$)", DomainPermissions),
-			(r"/domainpermissions/([a-zA-Z0-9_.-]*$)", DomainPermissions),
 
             (r"/concepts$", Concepts),
 			(r"/concepts/(\d+$)", Concepts),
+			(r"/conceptpermissions/(\d+$)", ConceptPermissions),
 			(r"/concepts/([a-zA-Z0-9_.-]*$)", Concepts),
             			
             #(r"/question$", Question),

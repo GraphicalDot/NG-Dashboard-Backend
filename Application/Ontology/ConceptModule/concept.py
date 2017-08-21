@@ -3,7 +3,8 @@ import tornado.web
 from tornado.escape import json_decode as TornadoJsonDecode
 from SettingsModule.settings  import concept_collection_name, indian_time, jwt_secret, \
 									 default_document_limit, domain_collection_name, \
-									permission_collection_name
+									permission_collection_name, user_collection_name,\
+									subconcept_collection_name
 from LoggingModule.logging import logger
 import time 
 import hashlib
@@ -31,7 +32,7 @@ class ConceptPermissions(GenericPermissions):
 
 	def initialize(self):
 		self.db = self.settings["db"]
-		self.parent_collection = self.db["domain_collection_name"]
+		self.parent_collection = self.db[domain_collection_name]
 		self.parent_name = "domain"
 		self.module_collection = self.db[concept_collection_name]
 		self.user_collection = self.db[user_collection_name]
@@ -45,7 +46,7 @@ class ConceptPermissions(GenericPermissions):
 class Concepts(Generic):
 	def initialize(self):
 		self.db = self.settings["db"]
-		self.parent_collection = self.db["domain_collection_name"]
+		self.parent_collection = self.db[domain_collection_name]
 		self.parent_name = "domain"
 		self.module_collection = self.db[concept_collection_name]
 		self.user_collection = self.db[user_collection_name]
