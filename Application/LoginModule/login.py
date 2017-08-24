@@ -6,6 +6,7 @@ from tornado.ioloop import IOLoop
 import hashlib
 import jwt
 import json 
+from pprint import pprint 
 
 #https://emptysqua.re/blog/refactoring-tornado-coroutines/
 ## finding user from motor  yields a future object which is nothing but a promise that it will have a value in future
@@ -43,17 +44,14 @@ class Login(tornado.web.RequestHandler):
 			password: 
 			newpassword:
 		"""
-		
+
 		print (self.request.body)
 		post_arguments = json.loads(self.request.body.decode("utf-8"))
 		print (post_arguments)
 		username = post_arguments.get("username", None)
 		password = post_arguments.get("password", None)
-		newpassword = post_arguments.get("newpassword", None)
-		logger.info("username=%s, password=%s, newpassword=%s"%(username, password, newpassword))
 
 		
-		db = self.settings["db"]
 		#user = yield db[credentials].find_one({'user_type': user_type, "username": username, "password": password})
 		
 		try:
@@ -61,24 +59,25 @@ class Login(tornado.web.RequestHandler):
 				raise Exception("username and password must be given")
 
 
-			password = hashlib.sha1(password.encode("utf-8")).hexdigest()
-			print (password)
-			print (self.collection)
-			user = yield self.collection.find_one({"username": username, "password": password})
-			print (user)
+			user = yield self.collection.find_one({"username": username, "password": password}, projection={"_id": False, "phone_number": False, 
+																				"permissions": False, "indian_time": False, "utc_epoch": False})
 			if not user:
 				raise Exception("user doesnt exist")
 			token =  jwt.encode({'username': user["username"], "password": user["password"]}, jwt_secret, algorithm='HS256')
-			
+			user.update({"token": token.decode("utf-8")})
 		
 		except Exception as e:
 				logger.error(e)
-				self.write({"error": True, "success": True, "token": None, "message": e.__str__()})
+				self.set_status(401)
+				pprint ({"error": True, "success": True, "token": None, "data": {"error": e.__str__()}})
+				self.write( e.__str__())
 				#self.write({"error": False, "success": True})
 				self.finish()
 				return 
 
-		self.write({"error": False, "success": True, "token": token.decode("utf-8"), "user_id": user.get("user_id")})
+		message = {"error": False, "success": True, "data": {"user": user, "token":token.decode("utf-8") }}
+		pprint (message)
+		self.write(message)
 		self.finish()
 		return 
 

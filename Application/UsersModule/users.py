@@ -151,11 +151,12 @@ class Users(tornado.web.RequestHandler):
 	@cors
 	@tornado.web.asynchronous
 	@tornado.gen.coroutine
-	def get(self, _id=None):
+	def get(self, user_id=None):
 		#user = self.check_user(user_id)
-		if _id:
+		try:
+			if user_id:
 				result = yield self.collection.find({"user_id": user_id}, projection={'_id': False})
-		else:
+			else:
 				_result = yield self.collection.find(projection={'_id': False}).to_list(length=100)
 				object_ids = []
 				objects = []
@@ -165,12 +166,19 @@ class Users(tornado.web.RequestHandler):
 				result = {"users": objects,"user_ids": object_ids}
 
 
-		if result:
+			if result:
 				message = {"error": False, "success": True, "message": None, "data": result}
 
-		else:
-				message = {"error": True, "success": False, "message": "No user exist"}
-
+			else:
+				raise Exception("No user exist")
+		except Exception as e:
+				logger.error(e)
+				self.set_status(400)
+				self.write( e.__str__())
+				self.finish()
+				return 
+	
+		self.set_status(200)
 		self.write(message)
 		self.finish()
 		return 

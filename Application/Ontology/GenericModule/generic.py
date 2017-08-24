@@ -445,10 +445,8 @@ class Generic(tornado.web.RequestHandler):
 	@cors
 	@tornado.web.asynchronous
 	@tornado.gen.coroutine
-	def get(self, module_id=None):
+	def get(self, user_id, module_id=None):
 		#user = self.check_user(user_id)
-		get_arguments = json.loads(self.request.body.decode("utf-8"))
-		user_id = get_arguments.get("user_id", None) ##who created this category
 		
 		@tornado.gen.coroutine
 		def if_superadmin(module_id, user_id, module_type):
@@ -477,6 +475,8 @@ class Generic(tornado.web.RequestHandler):
 		@tornado.gen.coroutine
 		def generic_user(module_id, user_id, module_type):
 			pprint ("generic user  function")
+			
+
 			if module_id:
 				result = yield self.permission_collection.find_one({"user_id": user_id, "module_id": module_id, "get": True, 
 							"module_type": self.module_type , "deletion_approval": False, 
@@ -494,6 +494,14 @@ class Generic(tornado.web.RequestHandler):
 
 
 		try:
+			pprint (user_id)
+			pprint (module_id)
+
+			#get_arguments = json.loads(self.request.body.decode("utf-8"))
+			##pprint (get_arguments)
+			#user_id = get_arguments.get("user_id", None) ##who created this category
+			if not user_id:
+				raise Exception("Please bear the pain to send user_id")
 			user = yield self.user_collection.find_one({"user_id": user_id})
 			if not user:
 				raise Exception("This user doesnt exists")
@@ -533,8 +541,11 @@ class Generic(tornado.web.RequestHandler):
 		except Exception as e:
 			logger.error(e)
 			message = str(e)
-			result = {"module_ids": [], "modules": []}
-
+			self.set_status(500)
+			self.write(e.__str__())
+			self.finish()
+			return 
+		pprint (result)
 		message = {"error": True, "success": False, "message": message, "data": result}
 		self.write(message)
 		logger.info(message)

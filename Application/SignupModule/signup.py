@@ -258,10 +258,49 @@ class Signup(tornado.web.RequestHandler):
 # This class will be used when the applicant needs to do the registration, here auth is not
 # required because any applicant can change its application
 
-class SignupApplicant(tornado.web.RequestHandler):
+class SignIn(tornado.web.RequestHandler):
 	def initialize(self):
 		self.db = self.settings["db"]
-		self.collection = self.db[credential_collection_name]	
+		self.collection = self.db[user_collection_name]	
+
+
+
+	@tornado.web.asynchronous
+	@tornado.gen.coroutine
+	def post(self):
+		post_arguments = json.loads(self.request.body.decode("utf-8"))
+		username = post_arguments.get("username")
+		password = post_arguments.get("password")
+		try:
+			if None in [password, username]:
+				raise Exception("Fields shouldnt be empty")
+				
+			user = yield self.collection.find_one({"username": username, "password": password}, projection={"_id": False, "phone_number": False, 
+																				"permissions": False, "indian_time": False, "utc_epoch": False})
+			
+			if not user:
+					raise Exception("This user doesnt exists")
+			
+			
+
+			token =  jwt.encode({'username': username, "password": password, "user_type": user["user_type"]}, jwt_secret, algorithm='HS256')
+		except Exception as e:
+				logger.error(e)
+				self.write({"error": True, "success": False, "token": None, "message": e.__str__()})
+				self.finish()
+				return 
+
+		##This line has to be added, somehow while inserting nanoskill into the mongo, nanoskill itself got a new _id key
+		##which is not serializable
+		##TODO : implement JWT tokens
+		user.pop("_id")
+		self.write({"error": False, "success": True, "data": user, "token": token.decode("utf-8")})
+		self.finish()
+		return 
+
+
+
+
 
 	@tornado.web.asynchronous
 	@tornado.gen.coroutine

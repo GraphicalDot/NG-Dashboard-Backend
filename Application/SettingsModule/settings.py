@@ -55,4 +55,5 @@ permissions = {"ids": [], "super": False}
 def indian_time():
 	india  = timezone(TIME_ZONE)
 	n_time = datetime.now(india)
-	return n_time.strftime('%Y-%m-%d %H-%M-%s')
+	#return n_time.strftime('%Y-%m-%d %H-%M-%s')
+	return n_time.strftime("%b %d %Y %H:%M:%S")

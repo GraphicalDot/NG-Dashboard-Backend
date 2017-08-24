@@ -22,7 +22,7 @@ define("port", default=app_port, help="run on the given port", type=int)
 
 #http://steelkiwi.com/blog/jwt-authorization-python-part-1-practise/
 from LoginModule.login import Login
-from SignupModule.signup import Signup, SignupApplicant, Users
+from SignupModule.signup import Signup
 from SettingsModule.settings import mongo_db
 from Ontology.DomainModule.domain import Domains
 from Ontology.DomainModule.domain import DomainPermissions
@@ -44,9 +44,6 @@ app_urls = [
 			(r"/signup/([a-zA-Z0-9_.-]*$)", Signup),
 			(r"/users", Users),
 
-			(r"/signupapplicant$", SignupApplicant),
-			(r"/signupapplicant/(\d+$)", SignupApplicant),
-			(r"/signupapplicant/([a-zA-Z0-9_.-]*$)", SignupApplicant),
 			
 			(r"/users$", Users),
 			(r"/users/(\d+$)", Users),
@@ -56,7 +53,8 @@ app_urls = [
 
 
             (r"/domains$", Domains),
-			(r"/domains/(\d+$)", Domains),
+			#(r"/domains/(\d+$)", Domains),
+            (r"/domains/([a-zA-Z\-0-9\.:,_]+)/([a-zA-Z\-0-9\.:,_]+)/?", Domains),
 			(r"/domainpermissions/(\d+$)", DomainPermissions),
 			(r"/domains/([a-zA-Z0-9_.-]*$)", Domains),
 
