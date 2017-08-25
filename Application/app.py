@@ -27,6 +27,10 @@ from SettingsModule.settings import mongo_db
 from Ontology.DomainModule.domain import Domains
 from Ontology.DomainModule.domain import DomainPermissions
 from Ontology.ConceptModule.concept import Concepts, ConceptPermissions
+from Ontology.NanoskillModule.nanoskill import Nanoskills, NanoskillPermissions
+
+
+from Ontology.SubconceptModule.subconcept import Subconcepts, SubconceptPermissions
 from UsersModule.users import Users
 #from QuestionsModule.questions import Question, Questions, QuestionPermissions
 
@@ -53,8 +57,8 @@ app_urls = [
 
 
             (r"/domains$", Domains),
-			#(r"/domains/(\d+$)", Domains),
-            (r"/domains/([a-zA-Z\-0-9\.:,_]+)/([a-zA-Z\-0-9\.:,_]+)/?", Domains),
+			(r"/domains/(\d+$)", Domains),
+            #(r"/domains/([a-zA-Z\-0-9\.:,_]+)/([a-zA-Z\-0-9\.:,_]+)/?", Domains),
 			(r"/domainpermissions/(\d+$)", DomainPermissions),
 			(r"/domains/([a-zA-Z0-9_.-]*$)", Domains),
 
@@ -64,6 +68,23 @@ app_urls = [
 			(r"/conceptpermissions/(\d+$)", ConceptPermissions),
 			(r"/concepts/([a-zA-Z0-9_.-]*$)", Concepts),
             			
+
+
+            (r"/subconcepts$", Subconcepts),
+			(r"/subconcepts/(\d+$)", Subconcepts),
+			(r"/subconceptpermissions/(\d+$)", SubconceptPermissions),
+			(r"/concepts/([a-zA-Z0-9_.-]*$)", Subconcepts),
+
+
+
+            (r"/nanoskills$", Nanoskills),
+			(r"/nanoskills/(\d+$)", Nanoskills),
+			(r"/nanoskillpermissions/(\d+$)", NanoskillPermissions),
+			(r"/nanoskills/([a-zA-Z0-9_.-]*$)", Nanoskills),
+
+
+
+
             #(r"/question$", Question),
             #(r"/questions$", Questions),
             #(r"/question/([a-zA-Z0-9_.-]*$)", Question),

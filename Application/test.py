@@ -51,12 +51,16 @@ db = connection[mongo_db_name]
 users = db[user_collection_name]
 domains = db[domain_collection_name]
 concepts = db[concept_collection_name]
+subconcepts = db[subconcept_collection_name]
+nanoskills = db[nanoskill_collection_name]
 permissions = db[permission_collection_name]
 
 logger.error("Deleting all collections to start a fresh run")
 logger.error(users.remove())
 logger.error(domains.remove())
 logger.error(concepts.remove())
+logger.error(subconcepts.remove())
+logger.error(nanoskills.remove())
 logger.error(permissions.remove())
 logger.error("Checking api for users")
 
@@ -137,16 +141,17 @@ domains = {"superadmin_domain": r1.json()["data"], "admin_domain": r2.json()["da
 
 ##logger.error("checking get permissions")
 logger.error("Superadmin will get all domains irresctive of their creation_approval and deletion_approval flags")
-r1 = requests.get("http://localhost:8000/domains",data =json.dumps({"user_id": users["superadmin"]["user_id"]}))
+r1 = requests.get("http://localhost:8000/domains", params={"user_id": users["superadmin"]["user_id"]})
+pprint (r1.url)
 pprint(r1.json())
 
 ##logger.error("admin will get all domains but only those whose creation_approval== True, which is only one domain created by superadmin")
-r = requests.get("http://localhost:8000/domains", data =json.dumps({"user_id": users["admin"]["user_id"]}))
+r = requests.get("http://localhost:8000/domains", params ={"user_id": users["admin"]["user_id"]})
 cprint(r.json()["data"]["module_ids"], "green")
 assert r.json()["data"]["modules"][0]["module_id"] == domains["superadmin_domain"]["module_id"]
 
 ##logger.error("other users will get domains whose creation_approval== True and they have get permissions on it, the user who created the domain will only have get and edit permissions on it")
-r = requests.get("http://localhost:8000/domains",data =json.dumps({"user_id": users["user_one"]["user_id"]}))
+r = requests.get("http://localhost:8000/domains", params={"user_id": users["user_one"]["user_id"]})
 cprint ("The domain list shall be empty, as superadmin havent provided any permission to this user on any domain yet", "blue")
 cprint(r.json()["data"])
 assert r.json()["data"] == []
@@ -169,16 +174,16 @@ cprint (r.json()["data"], "green")
 assert r.json()["data"] == message
 
 logger.error("Now checking if admin is getting two domains instead of one, as one other domain has been approved by superadmin")
-r = requests.get("http://localhost:8000/domains", data =json.dumps({"user_id": users["admin"]["user_id"]}))
+r = requests.get("http://localhost:8000/domains", params={"user_id": users["admin"]["user_id"]})
 cprint(r.json()["data"]["module_ids"], "green")
 
 
 logger.error("Now checking if user_two is getting his domain, he will get it even if its pending approval")
-r = requests.get("http://localhost:8000/domains", data =json.dumps({"user_id": users["user_two"]["user_id"]}))
+r = requests.get("http://localhost:8000/domains", params={"user_id": users["user_two"]["user_id"]})
 pprint(r.json())
 
 logger.error("User one will not see any domain as he doesnt have any permission on any domain neither he created one")
-r = requests.get("http://localhost:8000/domains", data =json.dumps({"user_id": users["user_one"]["user_id"]}))
+r = requests.get("http://localhost:8000/domains", params={"user_id": users["user_one"]["user_id"]})
 pprint(r.json()["data"])
 
 
@@ -238,20 +243,35 @@ cprint (r.json()["data"], "green")
 
 
 
-
+concepts = {}
 r = requests.post("http://localhost:8000/concepts", data=json.dumps({"module_name": "concept-%s"%fake.name(), "parent_id": domains["user_two_domain"]["module_id"],\
 														 "description": fake.text(), "user_id": users["superadmin"]["user_id"]}))
 
 pprint (r.json()["data"])
+concepts.update({"concept_by_superadmin_one":r.json()["data"] })
 
 r2 = requests.post("http://localhost:8000/concepts", data=json.dumps({"module_name": "concept-%s"%fake.name(), "parent_id": domains["user_two_domain"]["module_id"],\
 														 "description": fake.text(), "user_id": users["superadmin"]["user_id"]}))
 pprint (r.json()["data"])
+concepts.update({"concept_by_superadmin_two":r.json()["data"] })
+
+
+
+
+##Trying to crate concept from admin user id
+r2 = requests.post("http://localhost:8000/concepts", data=json.dumps({"module_name": "concept-%s"%fake.name(), "parent_id": domains["admin_domain"]["module_id"],\
+														 "description": fake.text(), "user_id": users["admin"]["user_id"]}))
+pprint (r.json()["data"])
+concepts.update({"concept_by_admin_one":r.json()["data"] })
+
 
 
 r2 = requests.post("http://localhost:8000/concepts", data=json.dumps({"module_name": "concept-%s"%fake.name(), "parent_id": domains["user_two_domain"]["module_id"],\
 														 "description": fake.text(), "user_id": users["superadmin"]["user_id"]}))
 pprint (r.json()["data"])
+concepts.update({"concept_by_superadmin_three":r.json()["data"] })
+
+
 
 ##trying to create concepts by other users 
 r = requests.post("http://localhost:8000/concepts", data=json.dumps({"module_name": "concept-%s"%fake.name(), "parent_id": domains["user_two_domain"]["module_id"],\
@@ -264,9 +284,173 @@ pprint (r.json()["data"])
 
 r = requests.post("http://localhost:8000/concepts", data=json.dumps({"module_name": "concept-%s"%fake.name(), "parent_id": domains["user_two_domain"]["module_id"],\
 														 "description": fake.text(), "user_id": users["admin"]["user_id"]}))
+
+
+##adding subconcepts randomly on concept ids by superadmin and admin
+########################## Subconcepts #################################
+
+########################## subceoncept by superadmin on concept_by_superadmin_three ##################################################3
+subconcepts = {}
+r = requests.post("http://localhost:8000/subconcepts", data=json.dumps({"module_name": "subconcept-%s"%fake.name(), "parent_id": concepts["concept_by_superadmin_three"]["module_id"],\
+														 "description": fake.text(), "user_id": users["superadmin"]["user_id"]}))
+
 pprint (r.json()["data"])
+subconcepts.update({"subconcept_by_superadmin_one":r.json()["data"] })
+
+########################## subceoncept by superadmin on concept_by_superadmin_two and its key is subconcept_by_superadmin_two ##################################################3
+
+r = requests.post("http://localhost:8000/subconcepts", data=json.dumps({"module_name": "subconcept-%s"%fake.name(), "parent_id": concepts["concept_by_superadmin_two"]["module_id"],\
+														 "description": fake.text(), "user_id": users["superadmin"]["user_id"]}))
+
+pprint (r.json()["data"])
+subconcepts.update({"subconcept_by_superadmin_two":r.json()["data"] })
+
+########################## subconcept by superadmin on concept_by_superadmin_three and its key is subconcept_by_superadmin_three ##################################################3
+r = requests.post("http://localhost:8000/subconcepts", data=json.dumps({"module_name": "subconcept-%s"%fake.name(), "parent_id": concepts["concept_by_superadmin_three"]["module_id"],\
+														 "description": fake.text(), "user_id": users["superadmin"]["user_id"]}))
+
+pprint (r.json()["data"])
+subconcepts.update({"subconcept_by_superadmin_three":r.json()["data"] })
+
+########################## subconcept by superadmin on concept_by_superadmin_one and its key is subconcept_by_superadmin_four ##################################################3
+r = requests.post("http://localhost:8000/subconcepts", data=json.dumps({"module_name": "subconcept-%s"%fake.name(), "parent_id": concepts["concept_by_superadmin_one"]["module_id"],\
+														 "description": fake.text(), "user_id": users["superadmin"]["user_id"]}))
+
+pprint (r.json()["data"])
+subconcepts.update({"subconcept_by_superadmin_four":r.json()["data"] })
 
 
+########################## subconcept by superadmin on concept_by_superadmin_one and its key is subconcept_by_superadmin_five ##################################################3
+r = requests.post("http://localhost:8000/subconcepts", data=json.dumps({"module_name": "subconcept-%s"%fake.name(), "parent_id": concepts["concept_by_superadmin_one"]["module_id"],\
+														 "description": fake.text(), "user_id": users["superadmin"]["user_id"]}))
+
+pprint (r.json()["data"])
+subconcepts.update({"subconcept_by_superadmin_five":r.json()["data"] })
+
+
+
+########################## subconcept by superadmin on concept_by_superadmin_three and its key is subconcept_by_superadmin_six ##################################################3
+r = requests.post("http://localhost:8000/subconcepts", data=json.dumps({"module_name": "subconcept-%s"%fake.name(), "parent_id": concepts["concept_by_superadmin_three"]["module_id"],\
+														 "description": fake.text(), "user_id": users["superadmin"]["user_id"]}))
+
+pprint (r.json()["data"])
+subconcepts.update({"subconcept_by_superadmin_six":r.json()["data"] })
+
+
+
+##########################################******************* Nanoskills *****************#################################################
+#['subconcept_by_superadmin_three', 'subconcept_by_superadmin_one', 'subconcept_by_superadmin_four', 'subconcept_by_superadmin_two',\
+# 'subconcept_by_superadmin_five', 'subconcept_by_superadmin_six']
+
+nanoskills = {}
+########################## subconcept by superadmin on concept_by_superadmin_three and its key is subconcept_by_superadmin_six ##################################################3
+r = requests.post("http://localhost:8000/nanoskills", data=json.dumps({"module_name": "nanoskill-%s"%fake.name(), "parent_id": subconcepts["subconcept_by_superadmin_three"]["module_id"],\
+														 "description": fake.text(), "user_id": users["superadmin"]["user_id"]}))
+
+pprint (r.json()["data"])
+nanoskills.update({"nanoskill_by_superadmin_one":r.json()["data"] })
+
+
+
+########################## subconcept by superadmin on concept_by_superadmin_three and its key is subconcept_by_superadmin_six ##################################################3
+r = requests.post("http://localhost:8000/nanoskills", data=json.dumps({"module_name": "nanoskill-%s"%fake.name(), "parent_id": subconcepts["subconcept_by_superadmin_one"]["module_id"],\
+														 "description": fake.text(), "user_id": users["superadmin"]["user_id"]}))
+
+pprint (r.json()["data"])
+nanoskills.update({"nanoskill_by_superadmin_two":r.json()["data"] })
+
+
+
+########################## subconcept by superadmin on concept_by_superadmin_three and its key is subconcept_by_superadmin_six ##################################################3
+r = requests.post("http://localhost:8000/nanoskills", data=json.dumps({"module_name": "nanoskill-%s"%fake.name(), "parent_id": subconcepts["subconcept_by_superadmin_two"]["module_id"],\
+														 "description": fake.text(), "user_id": users["superadmin"]["user_id"]}))
+
+pprint (r.json()["data"])
+nanoskills.update({"nanoskill_by_superadmin_three":r.json()["data"] })
+
+
+########################## subconcept by superadmin on concept_by_superadmin_three and its key is subconcept_by_superadmin_six ##################################################3
+r = requests.post("http://localhost:8000/nanoskills", data=json.dumps({"module_name": "nanoskill-%s"%fake.name(), "parent_id": subconcepts["subconcept_by_superadmin_two"]["module_id"],\
+														 "description": fake.text(), "user_id": users["superadmin"]["user_id"]}))
+
+pprint (r.json()["data"])
+nanoskills.update({"nanoskill_by_superadmin_four":r.json()["data"] })
+
+
+########################## subconcept by superadmin on concept_by_superadmin_three and its key is subconcept_by_superadmin_six ##################################################3
+r = requests.post("http://localhost:8000/nanoskills", data=json.dumps({"module_name": "nanoskill-%s"%fake.name(), "parent_id": subconcepts["subconcept_by_superadmin_two"]["module_id"],\
+														 "description": fake.text(), "user_id": users["superadmin"]["user_id"]}))
+
+pprint (r.json()["data"])
+nanoskills.update({"nanoskill_by_superadmin_five":r.json()["data"] })
+
+
+
+########################## subconcept by superadmin on concept_by_superadmin_three and its key is subconcept_by_superadmin_six ##################################################3
+r = requests.post("http://localhost:8000/nanoskills", data=json.dumps({"module_name": "nanoskill-%s"%fake.name(), "parent_id": subconcepts["subconcept_by_superadmin_two"]["module_id"],\
+														 "description": fake.text(), "user_id": users["superadmin"]["user_id"]}))
+
+pprint (r.json()["data"])
+nanoskills.update({"nanoskill_by_superadmin_six":r.json()["data"] })
+
+
+
+########################## subconcept by superadmin on concept_by_superadmin_three and its key is subconcept_by_superadmin_six ##################################################3
+r = requests.post("http://localhost:8000/nanoskills", data=json.dumps({"module_name": "nanoskill-%s"%fake.name(), "parent_id": subconcepts["subconcept_by_superadmin_two"]["module_id"],\
+														 "description": fake.text(), "user_id": users["superadmin"]["user_id"]}))
+
+pprint (r.json()["data"])
+nanoskills.update({"nanoskill_by_superadmin_seven":r.json()["data"] })
+
+
+
+########################## subconcept by superadmin on concept_by_superadmin_three and its key is subconcept_by_superadmin_six ##################################################3
+r = requests.post("http://localhost:8000/nanoskills", data=json.dumps({"module_name": "nanoskill-%s"%fake.name(), "parent_id": subconcepts["subconcept_by_superadmin_four"]["module_id"],\
+														 "description": fake.text(), "user_id": users["superadmin"]["user_id"]}))
+
+pprint (r.json()["data"])
+nanoskills.update({"nanoskill_by_superadmin_eight":r.json()["data"] })
+
+
+
+########################## subconcept by superadmin on concept_by_superadmin_three and its key is subconcept_by_superadmin_six ##################################################3
+r = requests.post("http://localhost:8000/nanoskills", data=json.dumps({"module_name": "nanoskill-%s"%fake.name(), "parent_id": subconcepts["subconcept_by_superadmin_five"]["module_id"],\
+														 "description": fake.text(), "user_id": users["superadmin"]["user_id"]}))
+
+pprint (r.json()["data"])
+nanoskills.update({"nanoskill_by_superadmin_nine":r.json()["data"] })
+
+
+########################## subconcept by superadmin on concept_by_superadmin_three and its key is subconcept_by_superadmin_six ##################################################3
+r = requests.post("http://localhost:8000/nanoskills", data=json.dumps({"module_name": "nanoskill-%s"%fake.name(), "parent_id": subconcepts["subconcept_by_superadmin_one"]["module_id"],\
+														 "description": fake.text(), "user_id": users["superadmin"]["user_id"]}))
+
+pprint (r.json()["data"])
+nanoskills.update({"nanoskill_by_superadmin_ten":r.json()["data"] })
+
+
+########################## subconcept by superadmin on concept_by_superadmin_three and its key is subconcept_by_superadmin_six ##################################################3
+r = requests.post("http://localhost:8000/nanoskills", data=json.dumps({"module_name": "nanoskill-%s"%fake.name(), "parent_id": subconcepts["subconcept_by_superadmin_two"]["module_id"],\
+														 "description": fake.text(), "user_id": users["superadmin"]["user_id"]}))
+
+pprint (r.json()["data"])
+nanoskills.update({"nanoskill_by_superadmin_eleven":r.json()["data"] })
+
+
+########################## subconcept by superadmin on concept_by_superadmin_three and its key is subconcept_by_superadmin_six ##################################################3
+r = requests.post("http://localhost:8000/nanoskills", data=json.dumps({"module_name": "nanoskill-%s"%fake.name(), "parent_id": subconcepts["subconcept_by_superadmin_three"]["module_id"],\
+														 "description": fake.text(), "user_id": users["superadmin"]["user_id"]}))
+
+pprint (r.json()["data"])
+nanoskills.update({"nanoskill_by_superadmin_twelve":r.json()["data"] })
+
+
+
+pprint (r.json()["data"])
+pprint (users)
+pprint(domains)
+pprint (concepts)
+print (subconcepts.keys())
 
 if __name__ == "__main__":
 	pass

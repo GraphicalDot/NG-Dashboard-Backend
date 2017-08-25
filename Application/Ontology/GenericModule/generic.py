@@ -162,10 +162,12 @@ class Generic(tornado.web.RequestHandler):
 		self.permission_collection = db[permission_collection_name]
 		self.action_collection = db[action_collection_name]
 		
+
+
 	@cors
 	@tornado.web.asynchronous
 	@tornado.gen.coroutine
-	def options(self, domain_id=None):
+	def options(self, domain_id=None, user_id=None):
         # no body
 		self.set_status(204)
 		self.finish()
@@ -210,7 +212,7 @@ class Generic(tornado.web.RequestHandler):
 					if user["user_type"] != "superadmin" or  not user["user_type"] != "admin":
 						dummy = yield self.permission_collection.find_one({"module_id": parent_id, "user_id": user_id, "add_child": True})
 						if not dummy:
-								raise Exception("The user who is trying to create this domain have insufficient permissions")
+								raise Exception("The user who is trying to create this %s have insufficient permissions"%self.module_type)
 				
 			##check if email is already registered with us
 			module = yield self.module_collection.find_one({"module_name": module_name})
@@ -255,10 +257,10 @@ class Generic(tornado.web.RequestHandler):
 			##deletion approval is False just after creation, If a user with delete permission wants to delete this module, 
 			## It will be subjected to approval by superadmin, he can approve or disapprove its deletion, 
 			## when a user submits its request to delete certain module, its status becomes pending
-			module = {'module_name': module_name, "description": description, "parent_id": parent_id, "parents": parents,
+			module = {'module_name': "%s-%s"%(self.module_type, module_name), "description": description, "parent_id": parent_id, "parents": parents,
 							 "module_id": module_id, "utc_epoch": time.time(), "indian_time": indian_time(), "username": user["username"],
 							 "user_id": user_id, "status": True, "deletion_approval": False, "creation_approval": creation_approval, 
-							  "module_type": self.module_type, "child_collection_name": self.child_collection_name}
+							  "module_type": self.module_type, "child_collection_name": self.child_collection_name, "children": []}
 			yield self.module_collection.insert_one(module)
 
 			pprint (module)
@@ -414,29 +416,58 @@ class Generic(tornado.web.RequestHandler):
 	@tornado.web.asynchronous
 	@tornado.gen.coroutine
 	def delete(self, module_id):
-		post_arguments = json.loads(self.request.body.decode("utf-8"))
-		user_id = post_arguments.get("user_id", None) ##who created this category
+		user_id = self.request.arguments.get("user_id")[0].decode("utf-8")
+		#post_arguments = json.loads(self.request.body.decode("utf-8"))
+		#user_id = post_arguments.get("user_id", None) ##who created this category
+		if not module_id:
+			raise Exception("Please send the module id")
+		
+		module = yield self.module_collection.find_one({"module_id": module_id})
+		user = yield self.user_collection.find_one({"user_id": user_id})
+		
+		pprint (user)
+		pprint (user)
+		if user["user_type"] == "superadmin":
+				pprint ("executing from super admin %s"%self.module_type)
+				yield self.module_collection.delete_one({"module_id": module_id})
+				yield delete_children(self.db, module["children"], module["child_collection_name"])
+				message = {"error": False, "success": True, "data": "Module %s with module_id %s and module_name %s has been \
+				deleted"%(self.module_type, module_id, module["module_name"])}
+				pprint (message)
+				#TODO: delete all parmissions as well
+				self.write(message)
+				self.finish()
+				return
+				
 
 		result = yield self.permission_collection.find_one({"user_id": user_id, "module_id": module_id, "delete": True})
+		
 		if result:
 			#now this domain and all its children will have delete_pending approval 
-			module = yield self.module_collection.find_one({"module_id": module_id})
 			if module["deletion_approval"]:
 				##delete domain and its all children
-				yield self.module_collection.update_one({"module_id": module_id})
-				yield mark_children(module["children"], module["child_collection_name"])
+				yield self.module_collection.delete_one({"module_id": module_id})
+				yield delete_children(self.db, module["children"], module["child_collection_name"])
+				message = {"error": False, "success": True, "data": "Module %s with module_id %s and module_name %s has been \
+				deleted"%(self.module_type, module_id, module["module_name"])}
 
 			else:
 				##mark domain and its children under "deletion_approval": pending
 				yield self.module_collection.update_one({"module_id": module_id}, {"$set": {"deletion_approval": "pending"}}, upsert=False)
-				yield mark_children(module["children"], module["child_collection_name"])
+				yield mark_children(self.db, module["children"], module["child_collection_name"])
+				message = {"error": False, "success": True, "data": "Module %s with module_id %s and module_name %s submitted for deletion and requires superadmin approval\
+									"%(self.module_type, module_id, module["module_name"])}
 
 		else:
-			result = "Insufficient permissions"		
+			message = "Insufficient permissions"
+			self.set_status(400)
+			self.write(message)
+			self.finish()
+			return 
 	
-		result = yield self.collection.find_one_and_delete({'domain_id': domain_id})
+		#result = yield self.collection.find_one_and_delete({'domain_id': domain_id})
 		logger.info(result)
-		message = {"error": False, "success": True, "data": message}
+		pprint (message)
 		#TODO: delete all parmissions as well
 		self.write(message)
 		self.finish()
@@ -445,26 +476,36 @@ class Generic(tornado.web.RequestHandler):
 	@cors
 	@tornado.web.asynchronous
 	@tornado.gen.coroutine
-	def get(self, user_id, module_id=None):
+	def get(self, module_id=None):
 		#user = self.check_user(user_id)
+		#post_arguments = json.loads(self.request.body.decode("utf-8"))
+		pprint (self.request.arguments)
+		pprint (self.request.body)
 		
+		user_id = self.request.arguments.get("user_id")[0].decode("utf-8")
+
+		try:
+			parent_id = self.request.arguments.get("parent_id")[0].decode("utf-8")
+		except Exception as e:
+			parent_id = None
+
 		@tornado.gen.coroutine
-		def if_superadmin(module_id, user_id, module_type):
+		def if_superadmin(module_id, parent_id, user_id, module_type):
 			pprint ("super admin function")
 			if module_id:
 				pprint ("module_id found")
 				result = yield self.module_collection.find_one({"module_id": module_id}, projection={"_id": False})
-			result = yield self.module_collection.find({"module_type": module_type}, projection={"_id": False}).to_list(100)
+			result = yield self.module_collection.find({"module_type": module_type, "parent_id": parent_id}, projection={"_id": False}).to_list(100)
 			if not result:
 				raise Exception ("No %ss exists"%self.module_type)
 			return result
 		@tornado.gen.coroutine
-		def if_admin(module_id, user_id, module_type):
+		def if_admin(module_id, parent_id, user_id, module_type):
 			pprint ("admin function")
 			if module_id:
 				result = yield self.module_collection.find_one({"module_id": module_id, "creation_approval": True,
 																"module_type": module_type,  "deletion_approval": False})
-			result = yield self.module_collection.find({"creation_approval": True,
+			result = yield self.module_collection.find({"creation_approval": True, "parent_id": parent_id,
 																	"module_type": module_type,	"deletion_approval": False}, 
 																	projection={"_id": False}).to_list(100)
 			if not result:
@@ -473,7 +514,7 @@ class Generic(tornado.web.RequestHandler):
 
 
 		@tornado.gen.coroutine
-		def generic_user(module_id, user_id, module_type):
+		def generic_user(module_id, parent_id, user_id, module_type):
 			pprint ("generic user  function")
 			
 
@@ -485,6 +526,8 @@ class Generic(tornado.web.RequestHandler):
 					raise Exception ("Insufficeint permissions to get %s "%module_id)
 				return result
 				
+			#huge code changes required as parent_id = None for domain is to be fetched same for other modules
+			##
 			result = yield self.permission_collection.find({"user_id": user_id, "get": True, "module_type": self.module_type ,
 			}, projection={"_id": False}).to_list(100)
 			
@@ -494,8 +537,6 @@ class Generic(tornado.web.RequestHandler):
 
 
 		try:
-			pprint (user_id)
-			pprint (module_id)
 
 			#get_arguments = json.loads(self.request.body.decode("utf-8"))
 			##pprint (get_arguments)
@@ -508,13 +549,10 @@ class Generic(tornado.web.RequestHandler):
 
 			##Now if a  a user is superadmin, he will get all the modules whether they are approved or not
 			if user["user_type"] == "superadmin":
-				logger.info("The user is superadmin")
-				__result = yield if_superadmin(module_id, user_id, self.module_type)					
+				__result = yield if_superadmin(module_id, parent_id, user_id, self.module_type)					
 
 			if user["user_type"] == "admin":
-				logger.info("The user is superadmin")
-				
-				__result = yield if_admin(module_id, user_id, self.module_type)					
+				__result = yield if_admin(module_id, parent_id,  user_id, self.module_type)					
 
 			if user["user_type"] == "superadmin" or user["user_type"] == "admin":
 				modules = []
@@ -526,7 +564,7 @@ class Generic(tornado.web.RequestHandler):
 
 
 			if not user["user_type"]:
-				__result = yield generic_user(module_id, user_id, self.module_type)					
+				__result = yield generic_user(module_id, parent_id, user_id, self.module_type)					
 				if __result:
 					module_ids = []
 					modules = []
