@@ -467,9 +467,10 @@ class Generic(tornado.web.RequestHandler):
 	
 		#result = yield self.collection.find_one_and_delete({'domain_id': domain_id})
 		logger.info(result)
-		pprint (message)
+		pprint ({"data": module_id})
+			
 		#TODO: delete all parmissions as well
-		self.write(message)
+		self.write({"data": module_id})
 		self.finish()
 		return
 
