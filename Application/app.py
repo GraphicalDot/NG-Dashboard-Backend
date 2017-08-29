@@ -57,9 +57,10 @@ app_urls = [
 
 
             (r"/domains$", Domains),
-			(r"/domains/(\d+$)", Domains),
+            (r"/domainpermissions$", DomainPermissions),
+			(r"/domainpermissions/([a-zA-Z0-9_.-]*$)", DomainPermissions),
+			#(r"/domains/(\d+$)", Domains),
             #(r"/domains/([a-zA-Z\-0-9\.:,_]+)/([a-zA-Z\-0-9\.:,_]+)/?", Domains),
-			(r"/domainpermissions/(\d+$)", DomainPermissions),
 			(r"/domains/([a-zA-Z0-9_.-]*$)", Domains),
 
 

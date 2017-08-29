@@ -17,7 +17,7 @@ from Ontology.GenericModule.generic  import GenericPermissions, Generic
 
 import codecs
 
-from generic.cors import cors
+from GeneralModule.cors import cors
 reader = codecs.getreader("utf-8")
 
 

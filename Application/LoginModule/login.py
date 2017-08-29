@@ -12,7 +12,7 @@ from pprint import pprint
 ## finding user from motor  yields a future object which is nothing but a promise that it will have a value in future
 ## and gen.coroutine is a perfect to resolve a future object uyntillit is resolved
 
-from generic.cors import cors
+from GeneralModule.cors import cors
 
 
 class Login(tornado.web.RequestHandler):

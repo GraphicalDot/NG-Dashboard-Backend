@@ -1,7 +1,10 @@
 import tornado.options
 import tornado.web
 from tornado.escape import json_decode as TornadoJsonDecode
-from SettingsModule.settings  import user_collection_name, indian_time, jwt_secret
+from SettingsModule.settings  import domain_collection_name, indian_time, jwt_secret,\
+									default_document_limit, user_collection_name, permission_collection_name,\
+									 action_collection_name, concept_collection_name, subconcept_collection_name,\
+									 nanoskill_collection_name, question_collection_name
 from LoggingModule.logging import logger
 import time 
 import hashlib
@@ -15,7 +18,7 @@ from AuthenticationModule.authentication import auth
 
 import codecs
 
-from generic.cors import cors
+from GeneralModule.cors import cors
 reader = codecs.getreader("utf-8")
 
 
@@ -28,8 +31,13 @@ class Users(tornado.web.RequestHandler):
 	def initialize(self):
 		self.db = self.settings["db"]
 		self.collection = self.db[user_collection_name]
-	
-	
+		self.domain_collection = self.db[domain_collection_name]
+		self.concept_collection = self.db[concept_collection_name]
+		self.subconconcept_collection = self.db[subconcept_collection_name]
+		self.nanoskill_collection = self.db[nanoskill_collection_name]
+		self.question_collection = self.db[question_collection_name]
+		self.permission_collection = self.db[permission_collection_name]
+
 	@cors
 	@tornado.web.asynchronous
 	@tornado.gen.coroutine
@@ -134,14 +142,43 @@ class Users(tornado.web.RequestHandler):
 	@cors
 	@tornado.web.asynchronous
 	@tornado.gen.coroutine
-	def delete(self, _id):
-		result = yield self.collection.find_one({"user_id": _id}, projection={'_id': False})
-		if result:
+	def delete(self, delete_user_id):
+		# Only superadmin can delete the user, And after deletion all the ownership of all kinds passed to 
+		## superadmin
+
+		try:
+			action_user_id = self.request.arguments.get("user_id")[0].decode("utf-8")
+			if action_user_id:
+				raise Exception("Please send the user_id of person who wants to delete")
+
+			user = yield self.collection.find_one({"user_id": action_user_id}, projection={'_id': False})
+			if user["user_type"] != "superadmin":
+				raise Exception ("Only superadmins can delete users")
+
+
+			result = yield self.collection.find_one({"user_id": delete_user_id}, projection={'_id': False})
+			if result:
 				result = yield self.collection.find_one_and_delete({'user_id': _id})
+				yield self.domain_collection.update_many({"user_id": delete_user_id}, {"$set": {"user_id": action_user_id}}, upsert=False)
+				yield self.concept_collection.update_many({"user_id": delete_user_id}, {"$set": {"user_id": action_user_id}}, upsert=False)
+				yield self.subconconcept_collection.update_many({"user_id": delete_user_id}, {"$set": {"user_id": action_user_id}}, upsert=False)
+				yield self.nanoskill_collection.update_many({"user_id": delete_user_id}, {"$set": {"user_id": action_user_id}}, upsert=False)
+				yield self.question_collection.update_many({"user_id": delete_user_id}, {"$set": {"user_id": action_user_id}}, upsert=False)
+				yield self.permission_collection.delete_many({"user_id": delete_user_id})
+				yield self.permission_collection.update_many({"granter_id": delete_user_id}, {"$set": {"granter_id": action_user_id}}, upsert=False)
+
+
+
 				logger.info(result)
 				message = {"error": False, "success": True, "message": "User has been deleted"}
-		else:
-				message = {"error": True, "success": False, "message": "User doesnt exist"}
+			else:
+				raise Exception ("No user Exists")
+
+			message = {"error": False, "success": True, "data": "%s has been deleted"%user["username"]}
+		except Exception as e:
+			logger.error(str(e.__str__()))
+			message = {"error": True, "success": False, "data": str(e.__str__())}
+
 
 		#TODO: delete all parmissions as well
 		self.write(message)
