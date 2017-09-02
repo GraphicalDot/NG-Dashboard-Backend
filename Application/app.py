@@ -5,7 +5,7 @@ import signal
 import tornado.options
 import tornado.web
 import tornado.httpclient
-
+import motor
 import urllib
 import json
 import datetime
@@ -23,7 +23,8 @@ define("port", default=app_port, help="run on the given port", type=int)
 #http://steelkiwi.com/blog/jwt-authorization-python-part-1-practise/
 from LoginModule.login import Login
 from SignupModule.signup import Signup
-from SettingsModule.settings import mongo_db
+from SettingsModule.settings import mongo_db, nanoskill_collection_name, domain_collection_name,\
+                                            question_collection_name, concept_collection_name, subconcept_collection_name
 from Ontology.DomainModule.domain import Domains
 from Ontology.DomainModule.domain import DomainPermissions
 from Ontology.ConceptModule.concept import Concepts, ConceptPermissions
@@ -99,6 +100,27 @@ def handle_signal(sig, frame):
     loop = IOLoop.instance()
     logger.info("stopping server dude")
     loop.add_callback(loop.stop)
+    
+def make_indexes():
+    try:
+        mongo_db[domain_collection_name].create_index([("ngrams", motor.pymongo.TEXT)])   
+    except Exception as e:
+        print (e)
+
+    try:
+        mongo_db[concept_collection_name].create_index([("ngrams", motor.pymongo.TEXT)])   
+    except Exception as e:
+        print (e)
+
+    try:
+        mongo_db[subconcept_collection_name].create_index([("ngrams", motor.pymongo.TEXT)])
+    except Exception as e:
+        print (e)
+    
+    try:
+        mongo_db[nanoskill_collection_name].create_index([("ngrams", motor.pymongo.TEXT)])   
+    except Exception as e:
+        print (e)
 
 
 if __name__ == "__main__":
@@ -113,5 +135,5 @@ if __name__ == "__main__":
         #AsyncIOMainLoop().install()
         #asyncio.get_event_loop().run_forever()
         logger.info("Application server started on %s"%options.port)
-
+        make_indexes()
         IOLoop.instance().start()

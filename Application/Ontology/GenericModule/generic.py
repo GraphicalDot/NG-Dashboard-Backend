@@ -5,6 +5,7 @@ from SettingsModule.settings  import domain_collection_name, indian_time, jwt_se
 									 default_document_limit, user_collection_name, permission_collection_name, \
 									 action_collection_name
 
+import operator
 from .delete_module import DeleteModule
 from .permissions import Permissions
 from LoggingModule.logging import logger
@@ -12,6 +13,7 @@ import time
 import hashlib
 import jwt
 import json
+import math
 from AuthenticationModule.authentication import auth
 #https://emptysqua.re/blog/refactoring-tornado-coroutines/
 ## finding user from motor  yields a future object which is nothing but a promise that it will have a value in future
@@ -135,6 +137,19 @@ class Generic(tornado.web.RequestHandler):
 		return parents
 
 
+	def make_ngrams(self, word, min_size=2):
+		"""
+		basestring       word: word to split into ngrams
+		int   min_size: minimum size of ngrams
+		"""
+		length = len(word)
+		size_range = range(min_size, max(length, min_size) + 1)
+		return list(set(
+			word[i:i + size]
+			for size in size_range
+			for i in range(0, max(0, length - size) + 1)
+			))
+
 	@cors
 	@tornado.web.asynchronous
 	@tornado.gen.coroutine
@@ -207,7 +222,8 @@ class Generic(tornado.web.RequestHandler):
 			module = {'module_name': "%s-%s"%(self.module_type, module_name), "description": description, "parent_id": parent_id, "parents": parents,
 							 "module_id": module_id, "utc_epoch": time.time(), "indian_time": indian_time(), "username": user["username"],
 							 "user_id": user_id, "status": True, "deletion_approval": False, "creation_approval": creation_approval, 
-							  "module_type": self.module_type, "user_type": user["user_type"], "child_collection_name": self.child_collection_name, "children": []}
+							  "module_type": self.module_type, "user_type": user["user_type"], "child_collection_name": self.child_collection_name, "children": [],
+							  "ngrams": " ".join(self.make_ngrams(module_name) + self.make_ngrams(description)) }
 			
 			
 			
@@ -437,8 +453,8 @@ class Generic(tornado.web.RequestHandler):
 			parent_id = None
 		modules = []
 		try:
-			skip = self.request.arguments.get("skip")[0].decode("utf-8")
-			limit = self.request.arguments.get("limit")[0].decode("utf-8")
+			skip = int(self.request.arguments.get("skip")[0].decode("utf-8"))
+			limit = int(self.request.arguments.get("limit")[0].decode("utf-8"))
 		except Exception:
 			skip = 0
 			limit = 15
@@ -448,38 +464,51 @@ class Generic(tornado.web.RequestHandler):
 		except Exception:
 			module_id= None
 		try:
-			text_search = self.request.arguments.get("text_search")[0].decode("utf-8")
+			search_text = self.request.arguments.get("search_text")[0].decode("utf-8")
 		except Exception:
-			text_search = None
+			search_text = None
 
 		user = yield self.user_collection.find_one({"user_id": user_id})
 
 		if user["user_type"] == "superadmin":
-			if text_search:
-				modules = yield self.module_collection.find({"parent_id": parent_id},{"module_name":{"$text":{"$search": text_search}}}, projection={"_id": False}).skip(skip).limit(limit)
+			modules = []
+			if search_text:
+				module_count = yield self.module_collection.find({"parent_id": parent_id, 
+							"$text":{"$search": search_text}}, projection={"_id": False, "ngrams": False}).count()
+				
+				pprint ("This is the module count %s"%module_count)
+				cursor = self.module_collection.find({"parent_id": parent_id,
+							"$text":{"$search": search_text}}, projection={"_id": False, "ngrams": False}).sort("children", -1).skip(skip).limit(limit)
+				while (yield cursor.fetch_next):
+					modules.append(cursor.next_object())
+			
 			else:
-				cursor = self.module_collection.find({"parent_id": parent_id}, projection={"_id": False}).skip(skip).limit(limit)
+				module_count = yield self.module_collection.find({"parent_id": parent_id}, projection={"_id": False, "ngrams": False}).count()
+				cursor = self.module_collection.find({"parent_id": parent_id}, projection={"_id": False, "ngrams": False}).sort("children", -1).skip(skip).limit(limit)
 				while (yield cursor.fetch_next):
 					modules.append(cursor.next_object())
 			[module.update({"permission": {"get": True, "delete": True, "add_child": True, "edit": True}}) for module in modules]
 		
 		else:
-				modules = yield Permissions.get_modules(user, parent_id, skip, limit, self.module_type, text_search, self.module_collection, self.permission_collection)
+				modules, module_count = yield Permissions.get_modules(user, parent_id, skip, limit, self.module_type, search_text, self.module_collection, self.permission_collection)
 		
 		#Now the front end nees data in terms of module_ids and modules
 		module_ids = []
 		_modules = []
 		for module in modules:
+
 			module_ids.append(module.get("module_id"))
-			try:
-				children = len(module.get("children"))
-			except Exception as e:
-				children = 0
+			children = len(module.get("children"))
 			module.update({"children": children})
+			pprint (module)
 			_modules.append(module)
 		
-		message = {"error": True, "success": False, "message": "Success", "data": {"modules": _modules, "module_ids": module_ids}}
-		pprint (message)
+		_modules = sorted(_modules,  key= lambda x: x["children"], reverse=True)
+
+		pprint (_modules)
+		pprint ("skip == <<%s>> and limit = <<%s>>"%(skip, limit))
+		message = {"error": True, "success": False, "message": "Success", "data": {"modules": _modules, "module_ids": module_ids, 
+						"module_count": module_count, "pages": math.ceil(module_count/limit)}}
 		self.write(message)
 		self.finish()
 		return

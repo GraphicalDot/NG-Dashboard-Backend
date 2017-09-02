@@ -141,11 +141,13 @@ class Permissions(object):
         modules = []
         if user["user_type"] == "admin":
             if textsearch:
-                cursor = yield module_collection.find({"parent_id": parent_id, "creation_approval": True, "deletion_approval": False},
-                {"module_name":{ "$text":{"$search": textsearch}}}, projection={"_id": False}).skip(skip).limit(limit)
+                cursor = module_collection.find({"parent_id": parent_id, "creation_approval": True, "deletion_approval": False,
+                "$text":{"$search": textsearch}}, projection={"_id": False, "ngrams": False}).skip(skip).limit(limit)
             
             else:
-                cursor = module_collection.find({"parent_id": parent_id, "creation_approval": True, "deletion_approval": False} , projection={"_id": False}).skip(skip).limit(limit)
+                module_count = yield module_collection.find({"parent_id": parent_id, "creation_approval": True, "deletion_approval": False}).count()
+                cursor = module_collection.find({"parent_id": parent_id, "creation_approval": True, "deletion_approval": False},
+                             projection={"_id": False, "ngrams": False}).skip(skip).limit(limit)
             while (yield cursor.fetch_next):
                 modules.append(cursor.next_object())
             
@@ -158,15 +160,18 @@ class Permissions(object):
                     permission = {"get": True, "edit": False, "delete": False, "add_child": False}
                 module.update({"permission": permission})
                 result.append(module)
-            return result
+            return (result, module_count)
         else:
             cursor =  permission_collection.find({"user_id": user["user_id"], "parent_id": parent_id, 
-                                                        "module_type": module_type}, projection={"_id": False}).skip(skip).limit(limit)
+                                                        "module_type": module_type}, projection={"_id": False, "ngrams": False}).skip(skip).limit(limit)
+            module_count =  yield permission_collection.find({"user_id": user["user_id"], "parent_id": parent_id, 
+                                                        "module_type": module_type}).count()
 
             while (yield cursor.fetch_next):
                 modules.append(cursor.next_object())
             
-            print (parent_id)
+            prin
+            t (parent_id)
             print (user["user_id"])
             print (modules)
             result = []
@@ -176,7 +181,7 @@ class Permissions(object):
                 if module:
                     module.update({"permission": permission["permission"]})
                     result.append(module)
-            return result
+            return (modules, module_count)
         
 
 

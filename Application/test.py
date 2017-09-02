@@ -127,7 +127,7 @@ pprint (users)
 
 
 description = fake.text()
-module_name = "domain-%s"%fake.name()
+module_name = fake.name()
 user_id = users["superadmin"]["user_id"]
 r1 = requests.post(DOMAIN_URL, data=json.dumps({"module_name": module_name, "description": description, "user_id": user_id}))
 if domains.find_one({"description": description, "user_id": user_id}, projection={"_id": False}):
@@ -140,7 +140,7 @@ else:
 
 for i in range(100):
 	description = fake.text()
-	module_name = "domain-%s"%fake.name()
+	module_name = fake.name()
 	user_id = users["superadmin"]["user_id"]
 	r1 = requests.post(DOMAIN_URL, data=json.dumps({"module_name": module_name, "description": description, "user_id": user_id}))
 	
@@ -148,7 +148,7 @@ for i in range(100):
 
 
 description = fake.text()
-module_name = "domain-%s"%fake.name()
+module_name = fake.name()
 user_id = users["admin"]["user_id"]
 r2 = requests.post(DOMAIN_URL, data=json.dumps({"module_name": module_name, "description": description, "user_id": user_id}))
 if domains.find_one({"description": description, "user_id": user_id}, projection={"_id": False}):
@@ -161,7 +161,7 @@ else:
 
 
 description = fake.text()
-module_name = "domain-%s"%fake.name()
+module_name = fake.name()
 user_id = users["user_one"]["user_id"]
 r3 = requests.post(DOMAIN_URL, data=json.dumps({"module_name": module_name, "description": description, "user_id": user_id}))
 if not domains.find_one({"description": description, "user_id": user_id}, projection={"_id": False}) and not r.json()["success"]:
@@ -173,7 +173,7 @@ else:
 
 
 description = fake.text()
-module_name = "domain-%s"%fake.name()
+module_name = fake.name()
 user_id = users["user_two"]["user_id"]
 cprint("Create permission for this user %s"%users["user_two"]["create_domain"], "green")
 r4 = requests.post(DOMAIN_URL, data=json.dumps({"module_name": module_name, "description": description, "user_id": user_id}))
