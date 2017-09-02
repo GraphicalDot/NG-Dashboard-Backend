@@ -23,10 +23,10 @@ class Permissions(object):
 
     @staticmethod
     @coroutine
-    def get_permission_get(user, module, permission_collection):
+    def get_permission_rest_parameter(user, module, rest_parameter, permission_collection):
 
 
-        if user["user_type"] in ["superadmin", "admin"]:
+        if user["user_type"] in ["superadmin"]:
             return True
 
         ##If the creator of themodule is user him/herself.
@@ -35,7 +35,7 @@ class Permissions(object):
 
         permission = yield permission_collection.find_one({"user_id": user["user_id"], 
 											"module_id": module["module_id"]})
-        return permission["permission"]["get"]
+        return permission["permission"][rest_parameter]
 
 
     @staticmethod
@@ -129,7 +129,7 @@ class Permissions(object):
 
     @staticmethod
     @coroutine
-    def get_modules(user, skip, limit, module_type, textsearch, module_collection, permission_collection):
+    def get_modules(user, parent_id, skip, limit, module_type, textsearch, module_collection, permission_collection):
         ##If a user is superadmin, he will get eveything, If a user is admin he will get all the modules
         ## and a permission object in which it will be specified which permission he have on module
         ## if a user is normal user, a query will be done on permission_collection to find all the modules
@@ -141,11 +141,11 @@ class Permissions(object):
         modules = []
         if user["user_type"] == "admin":
             if textsearch:
-                cursor = yield module_collection.find({"creation_approval": True, "deletion_approval": False},
+                cursor = yield module_collection.find({"parent_id": parent_id, "creation_approval": True, "deletion_approval": False},
                 {"module_name":{ "$text":{"$search": textsearch}}}, projection={"_id": False}).skip(skip).limit(limit)
             
             else:
-                cursor = module_collection.find({"creation_approval": True, "deletion_approval": False} , projection={"_id": False}).skip(skip).limit(limit)
+                cursor = module_collection.find({"parent_id": parent_id, "creation_approval": True, "deletion_approval": False} , projection={"_id": False}).skip(skip).limit(limit)
             while (yield cursor.fetch_next):
                 modules.append(cursor.next_object())
             
@@ -155,23 +155,26 @@ class Permissions(object):
                 if permission:
                     permission = permission
                 else:
-                    permission = {"get": True, "edit": True, "delete": False, "add_children": False}
+                    permission = {"get": True, "edit": False, "delete": False, "add_child": False}
                 module.update({"permission": permission})
                 result.append(module)
             return result
         else:
-            cursor =  permission_collection.find({"user_id": user["user_id"], 
+            cursor =  permission_collection.find({"user_id": user["user_id"], "parent_id": parent_id, 
                                                         "module_type": module_type}, projection={"_id": False}).skip(skip).limit(limit)
 
             while (yield cursor.fetch_next):
                 modules.append(cursor.next_object())
             
+            print (parent_id)
+            print (user["user_id"])
+            print (modules)
             result = []
             for permission in modules:
                 module = yield module_collection.find_one({"module_id": permission.get("module_id"), "creation_approval": True, "deletion_approval": False}, 
                                                         projection={"_id": False})
                 if module:
-                    module.update({"permission": permission})
+                    module.update({"permission": permission["permission"]})
                     result.append(module)
             return result
         
@@ -191,97 +194,50 @@ class Permissions(object):
         return 
 
 
-
     @staticmethod
     @coroutine
-    def get_permission_delete(user, module, permission_collection):
-        if user["user_type"] == "superadmin":
-            return True
-        permission = yield permission_collection.find_one({"user_id": user["user_id"], 
-											"module_id": module["module_id"]})
-        return permission["permission"]["delete"]
+    def set_permission_rest_paramter(user, module, parent, granter, rest_parameter, permission_collection):
+        try:
+                permissions = yield permission_collection.find_one({"user_id": user["user_id"], 
+											"module_id": module["module_id"],
+                                            "module_name": module["module_name"],
+                                            "module_type": module["module_type"]}) 
+        except Exception as e:
+            print ("potties nikal gayii dude")
+            print (e)
+        print (permissions)
+        print (rest_parameter)
+        if not parent:
+            parent_id = None
+
+        if not permissions:
+                per = {"get": False, "delete": False, "add_child": False, "edit": False}
+                per.update({rest_parameter: True})
+
+                print ("\n")
+                print (per)
+                print ("\n")
+                yield permission_collection.update_one({"user_id": user["user_id"], 
+											"module_id": module["module_id"],
+                                            "module_name": module["module_name"],
+                                            "module_type": module["module_type"], 
+                                            "parent_id": parent_id,
+											"granter_id": granter["user_id"]}, 
+											{"$set": {"permission": per}}, 
+                                            upsert=True)
+                return
 
 
-    @staticmethod
-    @coroutine
-    def get_permission_addchild(user, module, permission_collection):
-        
-        if user["user_type"] == "superadmin":
-            return True
-        
-        ##If the creator of themodule is user him/herself.
-        if user["user_id"] == module["user_id"]:
-            return True
-
-        permission = yield permission_collection.find_one({"user_id": user["user_id"], 
-											"module_id": module["module_id"]})
-        return permission["permission"]["add_child"]
-
-    @staticmethod
-    @coroutine
-    def get_permission_edit(user, module, permission_collection):
-        if user["user_type"] == "superadmin":
-            return True
-
-        ##If the creator of themodule is user him/herself.
-        if user["user_id"] == module["user_id"]:
-            return True
-
-
-        permission = yield permission_collection.find_one({"user_id": user["user_id"], 
-											"module_id": module["module_id"]})
-        return permission["permission"]["edit"]
-
-
-
-
-    @staticmethod
-    @coroutine
-    def set_permission_delete(user, module, parent, granter, permission_collection):
-        get_permission = yield get_permission_get(user, module, permission_collection)
-        if not get_permission:
-            raise Exception ("This user must first be provided get permission on this object, as he will not be able to utilizie this permission")
         yield permission_collection.update_one({"user_id": user["user_id"], 
 											"module_id": module["module_id"],
                                             "module_name": module["module_name"],
                                             "module_type": module["module_type"], 
                                             "parent": parent,
 											"granter_id": granter["user_id"]}, 
-											{"$set": {"permission.delete": True}}, 
+											{"$set": {"permission.%s"%rest_parameter: True}}, 
                                             upsert=False)
-
         return 
 
-    @staticmethod
-    @coroutine
-    def set_permission_get(user, module, parent, granter, permission_collection):
-        yield permission_collection.update_one({"user_id": user["user_id"], 
-											"module_id": module["module_id"], 
-                                            "module_name": module["module_name"],
-                                            "module_type": module["module_type"], 
-                                            "parent": parent,
-											"granter_id": granter["user_id"]}, 
-											{"$set": {"permission.get": True}}, 
-                                            upsert=False)
-
-        return 
-
-    @staticmethod
-    @coroutine
-    def set_permission_edit(user, module, parent, granter, permission_collection):
-        get_permission = yield get_permission_get(user, module, permission_collection)
-        if not get_permission:
-            raise Exception ("This user must first be provided get permission on this object, as he will not be able to utilizie this permission")
-        yield permission_collection.update_one({"user_id": user["user_id"], 
-											"module_id": module["module_id"], 
-                                            "module_name": module["module_name"],
-                                            "module_type": module["module_type"], 
-                                            "parent": parent,
-											"granter_id": granter["user_id"]}, 
-											{"$set": {"permission.edit": True}}, 
-                                            upsert=False)
-
-        return 
 
 
     @staticmethod
@@ -304,46 +260,6 @@ class Permissions(object):
 
     @staticmethod
     @coroutine
-    def delete_permission_add_child(user, module, permission_collection):
-        yield permission_collection.update_one({"user_id": user["user_id"], 
-											"module_id": module["module_id"]}, 
-											{"$set": {"permission.add_child": False}}, 
-                                            upsert=False)
-
-        return 
-
-
-    @staticmethod
-    @coroutine
-    def delete_permission_get(user, module, permission_collection):
-        yield permission_collection.update_one({"user_id": user["user_id"], 
-											"module_id": module["module_id"]}, 
-											{"$set": {"permission.get": False}}, 
-                                            upsert=False)
-
-        return 
-
-
-    @staticmethod
-    @coroutine
-    def delete_permission_delete(user, module, permission_collection):
-        yield permission_collection.update_one({"user_id": user["user_id"], 
-											"module_id": module["module_id"]}, 
-											{"$set": {"permission.delete": False}}, 
-                                            upsert=False)
-        return 
-
-    @staticmethod
-    @coroutine
-    def delete_permission_edit(user, module, permission_collection):
-        yield permission_collection.update_one({"user_id": user["user"], 
-											"module_id": module["module"]}, 
-											{"$set": {"permission.edit": False}}, 
-                                            upsert=False)
-        return 
-
-    @staticmethod
-    @coroutine
     def delete_user(user, module, permission_collection):
         yield permission_collection.delete_many({"user_id": user["user_id"]})
         return 
@@ -354,7 +270,17 @@ class Permissions(object):
     @coroutine
     def set_permission_from_obj(user, module, permission_object, parent_id, 
 					granter_id, permission_collection):
-        yield permission_collection.update_one({"user_id": user["user_id"], 
+        try:
+                permissions = yield permission_collection.find_one({"user_id": user["user_id"], 
+											"module_id": module["module_id"],
+                                            "module_name": module["module_name"],
+                                            "module_type": module["module_type"]}) 
+        except Exception as e:
+            print ("potties nikal gayii dude")
+            print (e)
+        if not permissions:
+                print ("Setting permisisons")
+                result = yield permission_collection.update_one({"user_id": user["user_id"], 
 											"module_id": module["module_id"], 
 											"module_name": module["module_name"],
 											"module_type": module["module_type"], 
@@ -363,7 +289,28 @@ class Permissions(object):
                                             "user_type": user["user_type"],
 											"granter_id": granter_id}, 
 											{"$set": {"permission": permission_object}}, upsert=True)
-        return 
+
+        else:
+            print (permissions)
+            print (permission_object)
+            ##The granter_id cant be present because the previous granter may be different
+            result = yield permission_collection.update_one({"user_id": user["user_id"], 
+											"module_id": module["module_id"], 
+											"module_name": module["module_name"],
+											"module_type": module["module_type"], 
+											"parent_id": parent_id,
+											}, 
+											{"$set": {"permission": permission_object}}, upsert=False)
+
+
+            permissions = yield permission_collection.find_one({"user_id": user["user_id"], 
+											"module_id": module["module_id"],
+                                            "module_name": module["module_name"],
+                                            "module_type": module["module_type"]}) 
+            
+            print (permissions)
+
+        return result
 
 
 
@@ -384,17 +331,22 @@ class Permissions(object):
 
     @staticmethod
     @tornado.gen.coroutine
-    def is_not_domain(user, module, permission_collection):   
+    def is_not_domain(user, parent_module, module_type, permission_collection):   
 	    # This implies that if a user wants to create a module other than domiain and if she is not 
         # superadmin or admin, then the create_child permission must be checked for the user.
         # if permission doesnt exists, it will raise an error 
         # If the module is to be created is not domain, then it must have a parent id
-        if not parent_id:
-            raise Exception("Please provide a parent_id to create %s"%self.module_type)
+        if user["user_type"] == "superadmin":
+            return True
+
+        if not parent_module:
+            raise Exception("Please provide a parent_id to create %s"%module_type)
         
-        result = get_permission_addchild(user, module, permission_collection)
-        if not result:
-            raise Exception("You dont have the required permissions to create children on  %s"%module["module_name"])
+        result = yield permission_collection.find_one({"user_id": user["user_id"], "module_id": parent_module["module_id"]})
+
+        
+        if not result or not result["permission"]["add_child"]:
+            raise Exception("You dont have the required permissions to create children on  %s"%parent_module["module_name"])
 
         return True
 

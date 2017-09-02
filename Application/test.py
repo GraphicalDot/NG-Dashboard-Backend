@@ -113,7 +113,7 @@ r5 = requests.post("http://localhost:8000/users", data=json.dumps({"first_name":
 
 users = {"superadmin": r1.json()["data"], "admin": r2.json()["data"], "user_one": r3.json()["data"], "user_two": r4.json()["data"], "user_three":r5.json()["data"] }
 
-f = users_collection.update({"user_id": users["superadmin"]["user_id"]}, {"$set": {"username": "kaali", "paasword": "1234"}}, upsert=False)
+f = users_collection.update({"user_id": users["superadmin"]["user_id"]}, {"$set": {"username": "Terminator", "password": "1234"}}, upsert=False)
 #pprint (f)
 pprint (users)
 
@@ -131,12 +131,20 @@ module_name = "domain-%s"%fake.name()
 user_id = users["superadmin"]["user_id"]
 r1 = requests.post(DOMAIN_URL, data=json.dumps({"module_name": module_name, "description": description, "user_id": user_id}))
 if domains.find_one({"description": description, "user_id": user_id}, projection={"_id": False}):
-		_str = "Creation of domain by super admin test".ljust(200) + "****Test Passed***" + "\n"
+		_str = "Creation of domain by super admin test".ljust(200) + "****Test Passed <<1>>***" + "\n"
 		cprint(_str, "green")
 else:
 		_str = "Creation of domain by super admin test".ljust(200) + "****Test Failed***" + "\n"
 		cprint(_str, "red")
 	
+
+for i in range(100):
+	description = fake.text()
+	module_name = "domain-%s"%fake.name()
+	user_id = users["superadmin"]["user_id"]
+	r1 = requests.post(DOMAIN_URL, data=json.dumps({"module_name": module_name, "description": description, "user_id": user_id}))
+	
+
 
 
 description = fake.text()
@@ -144,7 +152,7 @@ module_name = "domain-%s"%fake.name()
 user_id = users["admin"]["user_id"]
 r2 = requests.post(DOMAIN_URL, data=json.dumps({"module_name": module_name, "description": description, "user_id": user_id}))
 if domains.find_one({"description": description, "user_id": user_id}, projection={"_id": False}):
-		_str = "Creation of domain by admin test".ljust(200) + "****Test Passed***" + "\n"
+		_str = "Creation of domain by admin test".ljust(200) + "****Test Passed <<2>>***" + "\n"
 		cprint(_str, "green")
 else:
 		_str = "Creation of domain by admin test".ljust(200) + "****Test Failed***" + "\n"
@@ -157,7 +165,7 @@ module_name = "domain-%s"%fake.name()
 user_id = users["user_one"]["user_id"]
 r3 = requests.post(DOMAIN_URL, data=json.dumps({"module_name": module_name, "description": description, "user_id": user_id}))
 if not domains.find_one({"description": description, "user_id": user_id}, projection={"_id": False}) and not r.json()["success"]:
-		_str = "Creation of domain by user_one failed".ljust(200) + "****Test Passed***" + "\n"
+		_str = "Creation of domain by user_one failed".ljust(200) + "****Test Passed <<3>>***" + "\n"
 		cprint(_str, "green")
 else:
 		_str = "Creation of domain by user_one succeded".ljust(200) + "****Test Failed***" + "\n"
@@ -170,7 +178,7 @@ user_id = users["user_two"]["user_id"]
 cprint("Create permission for this user %s"%users["user_two"]["create_domain"], "green")
 r4 = requests.post(DOMAIN_URL, data=json.dumps({"module_name": module_name, "description": description, "user_id": user_id}))
 if domains.find_one({"description": description, "user_id": user_id}, projection={"_id": False}) and r4.json()["success"]:
-		_str = "Creation of domain by user_two succeded".ljust(200) + "****Test Passed***" + "\n"
+		_str = "Creation of domain by user_two succeded".ljust(200) + "****Test Passed <<4>>***" + "\n"
 		cprint(_str, "green")
 else:
 		_str = "Creation of domain by user_two failed".ljust(200) + "****Test Failed***" + "\n"
@@ -187,7 +195,7 @@ domains_object = {"superadmin": r1.json()["data"], "admin": r2.json()["data"], "
 ##logger.error("checking get permissions")
 r = requests.get(DOMAIN_URL, params={"user_id": users["superadmin"]["user_id"]})
 if domains.count() == len(r.json()["data"]["module_ids"]):
-		_str = "Get request by superadmin on domain getting all the domains".ljust(200) + "****Test Passed***" + "\n"
+		_str = "Get request by superadmin on domain getting all the domains".ljust(200) + "****Test Passed <<5>>***" + "\n"
 		cprint(_str, "green")
 else:
 		_str = "Creation of domain by user_two failed".ljust(200) + "****Test Failed***" + "\n"
@@ -199,7 +207,7 @@ else:
 r = requests.get(DOMAIN_URL, params ={"user_id": users["admin"]["user_id"]})
 cprint ("As admin user will get every possible domain but only those whose creation_approval==True and deletion_approval=False", "green")
 if domains.find({"creation_approval": True, "deletion_approval": False}).count() == len(r.json()["data"]["module_ids"]):
-		_str = "Get request by admin on domain getting all the domains with flags".ljust(200) + "****Test Passed***" + "\n"
+		_str = "Get request by admin on domain getting all the domains with flags".ljust(200) + "****Test Passed <<6>>***" + "\n"
 		cprint(_str, "green")
 else:
 		_str = "Creation of domain by user_two failed".ljust(200) + "****Test Failed***" + "\n"
@@ -209,7 +217,7 @@ else:
 ##logger.error("other users will get domains whose creation_approval== True and they have get permissions on it, the user who created the domain will only have get and edit permissions on it")
 r = requests.get(DOMAIN_URL, params={"user_id": users["user_one"]["user_id"]})
 if len(r.json()["data"]["module_ids"]) == 0:
-		_str = "Get request by user_one, He will not get any domains yet".ljust(200) + "****Test Passed***" + "\n"
+		_str = "Get request by user_one, He will not get any domains yet".ljust(200) + "****Test Passed  <<7>>***" + "\n"
 		cprint(_str, "green")
 else:
 		_str = "Get request by user_one failed, as he didnt receive emppty list of domains".ljust(200) + "****Test Failed***" + "\n"
@@ -218,7 +226,7 @@ else:
 
 r = requests.get(DOMAIN_URL, params={"user_id": users["user_one"]["user_id"]})
 if len(r.json()["data"]["module_ids"]) == 0:
-		_str = "Get request by user_one, He will not get any domains yet".ljust(200) + "****Test Passed***" + "\n"
+		_str = "Get request by user_one, He will not get any domains yet".ljust(200) + "****Test Passed <<8>>***" + "\n"
 		cprint(_str, "green")
 else:
 		_str = "Get request by user_one failed, as he didnt receive emppty list of domains".ljust(200) + "****Test Failed***" + "\n"
@@ -229,7 +237,7 @@ logger.info("Test")
 r = requests.get(DOMAIN_URL, params={"user_id": users["user_two"]["user_id"]})
 cprint ("Althogh user_two have created a domain, he will not get any as its not creation_approval by superadmin", "green")
 if len(r.json()["data"]["module_ids"]) == 0:
-		_str = "Get request by user_two, He will not get any domains yet as his domain is not approved".ljust(200) + "****Test Passed***" + "\n"
+		_str = "Get request by user_two, He will not get any domains yet as his domain is not approved".ljust(200) + "****Test Passed  <<9>>***" + "\n"
 		cprint(_str, "green")
 else:
 		_str = "Get request by user_two failed, as he didnt receive emppty list of domains".ljust(200) + "****Test Failed***" + "\n"
@@ -242,7 +250,7 @@ r = requests.put("%s/%s"%(DOMAIN_URL, domains_object["user_two"]["module_id"]), 
 cprint ("domain Admin<<%s>> and domain user_two <<%s>> are not creation_approval by user_two"%(domains_object["admin"]["module_id"], domains_object["user_two"]["module_id"]), "green")
 cprint ("Marking domain user_two <<%s>> creation_approval by superadmin"%(domains_object["user_two"]["module_id"]), "green")
 if r.json()["error"]:
-		_str = "Creation approval request by user_two failed, he wasnt able to maark creation_approval".ljust(200) + "****Test Passed***" + "\n"
+		_str = "Creation approval request by user_two failed, he wasnt able to maark creation_approval".ljust(200) + "****Test Passed <<10>>***" + "\n"
 		cprint(_str, "green")
 else:
 		_str = "Get request by user_two failed, as he didnt receive emppty list of domains".ljust(200) + "****Test Failed***" + "\n"
@@ -255,7 +263,7 @@ r = requests.put("%s/%s"%(DOMAIN_URL, domains_object["user_two"]["module_id"]), 
 cprint ("domain Admin<<%s>> and domain user_two <<%s>> are not creation_approval by superadmin"%(domains_object["admin"]["module_id"], domains_object["user_two"]["module_id"]), "green")
 cprint ("Marking domain user_two <<%s>> creation_approval by superadmin"%(domains_object["user_two"]["module_id"]), "green")
 if not r.json()["error"]:
-		_str = "Creation approval by superadmin succeeded".ljust(200) + "****Test Passed***" + "\n"
+		_str = "Creation approval by superadmin succeeded".ljust(200) + "****Test Passed <<11>>***" + "\n"
 		cprint(_str, "green")
 else:
 		_str = "Creation approval by superadmin failed".ljust(200) + "****Test Failed***" + "\n"
@@ -269,7 +277,7 @@ r = requests.get(DOMAIN_URL, params={"user_id": users["user_two"]["user_id"]})
 cprint ("Now the domain created by user_two has been creation_approval by superadmin", "green")
 cprint ("He must get a domain whose domain id must match with on ehe created", "green")
 if r.json()["data"]["module_ids"][0] == domains_object["user_two"]["module_id"]:
-		_str = "Get request by user_two, He will get a domain which he created as it is approved sy superadmin".ljust(200) + "****Test Passed***" + "\n"
+		_str = "Get request by user_two, He will get a domain which he created as it is approved sy superadmin".ljust(200) + "****Test Passed <<12>>***" + "\n"
 		cprint(_str, "green")
 else:
 		_str = "Get request by user_two failed, as he didnt receive emppty list of domains".ljust(200) + "****Test Failed***" + "\n"
@@ -283,7 +291,7 @@ r = requests.get(DOMAIN_URL, params={"user_id": users["user_two"]["user_id"]})
 cprint ("Now the domain created by user_two has been creation_approval by superadmin", "green")
 cprint ("He must get a domain whose domain id must match with on ehe created", "green")
 if r.json()["data"]["module_ids"][0] == domains_object["user_two"]["module_id"]:
-		_str = "Get request by user_two, He will get a domain which he created as it is approved sy superadmin".ljust(200) + "****Test Passed***" + "\n"
+		_str = "Get request by user_two, He will get a domain which he created as it is approved sy superadmin".ljust(200) + "****Test Passed <<13>>***" + "\n"
 		cprint(_str, "green")
 else:
 		_str = "Get request by user_two failed, as he didnt receive emppty list of domains".ljust(200) + "****Test Failed***" + "\n"
@@ -300,7 +308,7 @@ r = requests.get("%s/%s"%(DOMAIN_PERMISSIONSURL, domains_object["user_two"]["mod
 cprint ("Now the domain created by user_two has been creation_approval by superadmin", "green")
 cprint ("He must get a domain whose domain id must match with on ehe created", "green")
 if len(r.json()["data"]) == 3 :
-		_str = "Permisisons for doman created by user_two has three domanins list with permission of admin, supeamdin and user_two".ljust(200) + "****Test Passed***" + "\n"
+		_str = "Permisisons for doman created by user_two has three domanins list with permission of admin, supeamdin and user_two".ljust(200) + "****Test Passed <<14>>***" + "\n"
 		cprint(_str, "green")
 else:
 		_str = "Get request by user_two failed, as he didnt receive emppty list of domains".ljust(200) + "****Test Failed***" + "\n"
@@ -312,7 +320,7 @@ r = requests.get(DOMAIN_PERMISSIONSURL, params={"user_id": users["admin"]["user_
 cprint ("get permissions for the admin for module_type domain", "green")
 cprint ("As till now, nobody provided admin any permissions, he will have get permission on every domain", "green")
 if len(r.json()["data"]) == 3 and r.json()["data"][0]["permission"] == {"get": True, "add_child": False, "delete": False, "edit": False}:
-		_str = "NUmber of domains with permission object which admin got is three".ljust(200) + "****Test Passed***" + "\n"
+		_str = "NUmber of domains with permission object which admin got is three".ljust(200) + "****Test Passed  <<15>>***" + "\n"
 		cprint(_str, "green")
 else:
 		_str = "Get request by user_two failed, as he didnt receive emppty list of domains".ljust(200) + "****Test Failed***" + "\n"
@@ -324,8 +332,30 @@ else:
 r = requests.get(DOMAIN_URL, params={"user_id": users["admin"]["user_id"]})
 cprint ("admin will try to provide permission to user_one on domain created by user_two", "green")
 cprint ("The request will fail as admin doesnt have the permission delete permission on domain created by user two", "green")
-if len(r.json()["data"]) == 3 and r.json()["data"][0]["permission"] == {"get": True, "add_child": False, "delete": False, "edit": False}:
-		_str = "NUmber of domains with permission object which admin got is three".ljust(200) + "****Test Passed***" + "\n"
+cprint ("This is the domains admin got on which he have get and delete permissions, he got only two as one of the domain is still not creation approval by superadmin", "green")
+pprint (r.json())
+if len(r.json()["data"]) == 2 and r.json()["data"]["modules"][0]["permission"] == {"get": True, "add_child": False, "delete": False, "edit": False}:
+		_str = "NUmber of domains with permission object which admin got is TWO".ljust(200) + "****Test Passed <<16>>***" + "\n"
+		cprint(_str, "green")
+else:
+		_str = "Get request by user_two failed, as he didnt receive emppty list of domains".ljust(200) + "****Test Failed***" + "\n"
+		cprint(_str, "red")
+
+
+permission = {"get": True, "delete": True, "add_child": False, "edit": False}
+pprint ("%s/%s"%(DOMAIN_URL,domains_object["user_two"]["module_id"]))
+r = requests.put("%s/%s"%(DOMAIN_URL, domains_object["user_two"]["module_id"] ), data=json.dumps({"user_id": users["admin"]["user_id"], "granter_id": users["superadmin"]["user_id"],"permission": permission}))
+cprint ("Now the superadmin will give permission to admin for the deletion on domain created by user_two", "green")
+cprint ("After this result admin %s will have delete permission on %s"%(users["admin"]["user_id"], domains_object["user_two"]["module_id"]), "green")
+pprint (r.json())
+
+
+
+r = requests.get(DOMAIN_URL, params={"user_id": users["admin"]["user_id"]})
+cprint ("Checking if domain permissions of admin has been changed on domain %s"%domains_object["user_two"]["module_id"], "green")
+pprint (r.json()["data"]["modules"][1]["permission"])
+if len(r.json()["data"]) == 2 and r.json()["data"]["modules"][1]["permission"] == {"permission": {"get": True, "add_child": False, "delete": True, "edit": False}}:
+		_str = "The admin now has delete permission on the domain %s"%domains_object["user_two"]["module_id"].ljust(100) + "****Test Passed <<17>>***" + "\n"
 		cprint(_str, "green")
 else:
 		_str = "Get request by user_two failed, as he didnt receive emppty list of domains".ljust(200) + "****Test Failed***" + "\n"
@@ -333,12 +363,174 @@ else:
 
 
 
-r = requests.get(DOMAIN_URL, params={"user_id": users["admin"]["user_id"]})
-cprint ("Now the superadmin will give permission to admin for the deletion on domain created by user_two", "green")
+
+r = requests.get(DOMAIN_URL, params={"user_id": users["user_one"]["user_id"]})
+cprint ("Checking get modules for user_one %s"%(users["user_one"]["user_id"]), "green")
+pprint (r.json())
+if len(r.json()["data"]["module_ids"]) == 0:
+		message = "The user_one %s havent received any domain, as he desnt have any permission on any domain, neither he created any"%users["user_one"]["user_id"]
+		_str = message.ljust(200) + "****Test Passed <<18>>***" + "\n"
+		cprint(_str, "green")
+else:
+		_str = "Get request by user_two failed, as he didnt receive emppty list of domains".ljust(200) + "****Test Failed***" + "\n"
+		cprint(_str, "red")
+
+
+
+permission = {"get": True, "delete": False, "add_child": True, "edit": False}
+pprint ("%s/%s"%(DOMAIN_URL,domains_object["user_two"]["module_id"]))
+r = requests.put("%s/%s"%(DOMAIN_URL, domains_object["user_two"]["module_id"] ), data=json.dumps({"user_id": users["user_one"]["user_id"], "granter_id": users["admin"]["user_id"],"permission": permission}))
+cprint ("Now the admin will give permission to user_one for the add_child, get on domain created by user_two", "green")
 cprint ("After this result admin %s will have delete permission on %s"%(users["admin"]["user_id"], domains_object["user_two"]["module_id"]), "green")
+if r.json()["error"]:
+		message = "The admin doesnt haven add_child permisisons on domain %s so he cant provide ad child permission to user_one %s"%(domains_object["user_two"]["module_id"],users["user_one"]["user_id"])
+		_str = message.ljust(200) + "****Test Passed <<19>>***" + "\n"
+		cprint(_str, "green")
+else:
+		print (r.json())
+		_str = "".ljust(200) + "****Test Failed***" + "\n"
+		cprint(_str, "red")
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+permission = {"get": True, "delete": False, "add_child": False, "edit": False}
+pprint ("%s/%s"%(DOMAIN_URL,domains_object["user_two"]["module_id"]))
+r = requests.put("%s/%s"%(DOMAIN_URL, domains_object["user_two"]["module_id"] ), data=json.dumps({"user_id": users["user_one"]["user_id"], "granter_id": users["admin"]["user_id"],"permission": permission}))
+cprint ("Now the admin will give <<GET>>permission to user_one %s on domain created by user_two %s"%(users["user_one"]["user_id"], domains_object["user_two"]["module_id"]), "green")
+cprint ("After this result user_one %s will have get permission on %s"%(users["user_one"]["user_id"], domains_object["user_two"]["module_id"]), "green")
+pprint (r.json())
+
+if r.json()["success"]:
+		message = "The admin had get permisisons on domain %s so he provided get permission to user_one %s"%(domains_object["user_two"]["module_id"],users["user_one"]["user_id"])
+		_str = message.ljust(200) + "****Test Passed <<20>>***" + "\n"
+		cprint(_str, "green")
+else:
+		_str = "Get request by user_two failed, as he didnt receive emppty list of domains".ljust(200) + "****Test Failed***" + "\n"
+		cprint(_str, "red")
+
+
+r = requests.get(DOMAIN_URL, params={"user_id": users["user_one"]["user_id"]})
+cprint ("Checking get modules for user_one, NOw will get a domain created by user_two as admin provied get permisison to user_one", "green")
+pprint (r.json())
+if len(r.json()["data"]["module_ids"]) == 1:
+		message = "The user_one %s received a domain %s"%(users["user_one"]["user_id"], domains_object["user_two"]["module_id"])
+		_str = message.ljust(200) + "****Test Passed <<21>>***" + "\n"
+		cprint(_str, "green")
+		
+else:
+		cprint(_str, "green")
+		_str = "Get request by user_two failed, as he didnt receive emppty list of domains".ljust(200) + "****Test Failed***" + "\n"
+		cprint(_str, "red")
+
+
+
+
+
+##Providing add child permission to user_one by superadmin, A thing to note is 
+##the permissions will be updated through set_obj, so all the previoud permissions
+## will be overidden by superadmin permissions pobject given to this user
+permission = {"get": True, "delete": False, "add_child": True, "edit": True}
+pprint ("%s/%s"%(DOMAIN_URL,domains_object["user_two"]["module_id"]))
+r = requests.put("%s/%s"%(DOMAIN_URL, domains_object["user_two"]["module_id"] ), data=json.dumps({"user_id": users["user_one"]["user_id"], "granter_id": users["superadmin"]["user_id"],"permission": permission}))
+cprint ("Now the admin will give <<GET>>permission to user_one %s on domain created by user_two %s"%(users["user_one"]["user_id"], domains_object["user_two"]["module_id"]), "green")
+cprint ("After this result user_one %s will have get permission on %s"%(users["user_one"]["user_id"], domains_object["user_two"]["module_id"]), "green")
+pprint (r.json())
+
+if r.json()["success"]:
+		message = "The admin had get permisisons on domain %s so he provided get permission to user_one %s"%(domains_object["user_two"]["module_id"],users["user_one"]["user_id"])
+		_str = message.ljust(200) + "****Test Passed <<20>>***" + "\n"
+		cprint(_str, "green")
+else:
+		_str = "Get request by user_two failed, as he didnt receive emppty list of domains".ljust(200) + "****Test Failed***" + "\n"
+		cprint(_str, "red")
+
+
+
+
+
+
+
+##Providing add child permission to user_one by superadmin, A thing to note is 
+##the permissions will be updated through set_obj, so all the previoud permissions
+## will be overidden by superadmin permissions pobject given to this user
+r = requests.get(DOMAIN_URL, params={"user_id": users["user_one"]["user_id"]})
+cprint ("Checking get modules for user_one, NOw will get a domain created by user_two as admin provied get permisison to user_one", "green")
+pprint (r.json())
+if len(r.json()["data"]["module_ids"]) == 1:
+		message = "The user_one %s received a domain %s"%(users["user_one"]["user_id"], domains_object["user_two"]["module_id"])
+		_str = message.ljust(200) + "****Test Passed <<21>>***" + "\n"
+		cprint(_str, "green")
+		
+else:
+		cprint(_str, "green")
+		_str = "Get request by user_two failed, as he didnt receive emppty list of domains".ljust(200) + "****Test Failed***" + "\n"
+		cprint(_str, "red")
+
+
+
+import progressbar
+import time
+
+bar = progressbar.ProgressBar(redirect_stdout=True)
+
+
+concepts = []
+pprint ("Adding concepts")
+for i in range(500):
+	domain = random.choice([("user_two", domains_object["user_two"]["module_id"]),   ("admin", domains_object["admin"]["module_id"]), ("superadmin", domains_object["superadmin"]["module_id"])])
+	r = requests.post("http://localhost:8000/concepts", data=json.dumps({"module_name": "%s"%fake.name(), 
+														"parent_id": domain[1],
+														 "description": fake.text(), 
+														 "user_id": users["superadmin"]["user_id"]}))
+	bar.update(i*100/500)
+	if r.status_code == 200:
+		concepts.append((domain[0], domain[1], r.json()["data"] ))
+
+	
+
+
+bar = progressbar.ProgressBar(redirect_stdout=True)
+pprint ("Adding subconcepts")
+subconcepts = []
+for i in range(1000):
+	concept = random.choice(concepts)
+	r = requests.post("http://localhost:8000/subconcepts", data=json.dumps({"module_name": "%s"%fake.name(), 
+														"parent_id": concept[2]["module_id"],
+														 "description": fake.text(), 
+														 "user_id": users["superadmin"]["user_id"]}))
+	bar.update(i*100/1000)
+	subconcepts.append((concept[0], concept[1], concept[2], r.json()["data"] ))
+
+
+bar = progressbar.ProgressBar(redirect_stdout=True)
+pprint ("Adding nanoskills")
+nanoskills = []
+for i in range(1000):
+	subconcept = random.choice(subconcepts)
+	r = requests.post("http://localhost:8000/nanoskills", data=json.dumps({"module_name": "%s"%fake.name(), 
+														"parent_id": subconcept[3]["module_id"],
+														 "description": fake.text(), 
+														 "user_id": users["superadmin"]["user_id"]}))
+	bar.update(i*100/1000)
+	nanoskills.append((subconcept[0], subconcept[1], subconcept[2], subconcept[3], r.json()["data"] ))
+
+
+
+
+"""
+r = requests.get(DOMAIN_URL, params={"user_id": users["admin"]["user_id"]})
 r = requests.get(DOMAIN_URL, params={"user_id": users["admin"]["user_id"]})
 cprint ("Now Admin will give permission to user_one for the deletion on domain created by user_two", "green")
 cprint ("After this result user_one %s will have delete permission on %s"%(users["user_one"]["user_id"], domains_object["user_two"]["module_id"]), "green")
@@ -382,7 +574,6 @@ cprint ("He will fail as creating a module with same name in same module_type is
 
 
 
-"""
 logger.info("Now first we will first try to pass the creation_approval flag from admin and other users")
 logger.error("Put request by admin to change create_approval flag of the domain")
 r = requests.put("http://localhost:8000/domains/%s"%domains["admin_domain"]["module_id"], data =json.dumps({"user_id": users["user_one"]["user_id"], "creation_approval": True }))

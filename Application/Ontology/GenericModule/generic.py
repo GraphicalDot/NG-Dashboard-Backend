@@ -114,7 +114,7 @@ class Generic(tornado.web.RequestHandler):
 
 
 	@tornado.gen.coroutine
-	def add_children(parent_id, module_id, module_name):
+	def add_children(self, parent_id, module_id, module_name):
 		## Deletion approval is False when creation and will be True when a user submits its deletion
 		## it will be deleted by admin when he would nod yes, If he says no, then its deletion will again be
 		## False and cannot be deleted by this particular user.
@@ -152,6 +152,7 @@ class Generic(tornado.web.RequestHandler):
 		
 		#user = yield db[credentials].find_one({'user_type': user_type, "username": username, "password": password})
 		
+		pprint ("This is the parent id %s"%parent_id)
 		try:
 			if None in [module_name, description, user_id]:
 				raise Exception("Fields shouldnt be empty")
@@ -171,10 +172,12 @@ class Generic(tornado.web.RequestHandler):
 			## only the modules which are creation approed or deletion approved false.
 			is_domain = yield Permissions.is_domain(self.module_type, user)
 			if not is_domain: ##this implies that other type of module is being created
-				parent_module = yield module_collection.find_one({"module_name": module_name, "parent_id": parent_id})
-				if parent_module:
+				parent_module = yield self.parent_collection.find_one({"module_id": parent_id})
+				
+				child_in_parent = yield self.module_collection.find_one({"module_name": module_name, "parent_id": parent_id})
+				if child_in_parent:
 					raise Exception("child module with name %s has already been added to this module"%module_name)
-				yield Permissions.is_not_domain(user, parent_module, self.permission_collection)
+				yield Permissions.is_not_domain(user, parent_module, self.module_type, self.permission_collection)
 				
 			##check if email is already registered with us
 
@@ -244,6 +247,8 @@ class Generic(tornado.web.RequestHandler):
 		##TODO if a user has to become a superadmin
 		pprint (module_id)
 		put_arguments = json.loads(self.request.body.decode("utf-8"))
+		pprint (put_arguments)
+
 		user_id = put_arguments.get("user_id") ##User to whom the permissions will be provided
 		granter_id = put_arguments.get("granter_id") ##who is changing the permissions of this module
 		permission = put_arguments.get("permission", None)
@@ -254,6 +259,14 @@ class Generic(tornado.web.RequestHandler):
 		try:
 			__message = None
 			module = yield self.module_collection.find_one({"module_id": module_id})
+			parent_id = module["parent_id"]
+			if not parent_id:
+				parent_id = None
+				parent = None
+			else: 
+				parent = yield self.parent_collection.find_one({"module_id": parent_id})
+
+
 			granter = yield self.user_collection.find_one({"user_id": granter_id})
 			user = yield self.user_collection.find_one({"user_id": user_id})
 			if not user:
@@ -290,26 +303,24 @@ class Generic(tornado.web.RequestHandler):
 				#assert permission["delete"], "Permission object has not delete parameter"
 				##we only have to check for non superadmina nd admin user because they can do anything with any module
 				__message = []
-				if not granter["user_type"]:
-					for rest_paramter in ["get", "delete", "edit", "add_child"]:
-						if permission[rest_paramter]:
-							result = yield self.permission_collection.find({"user_id": granter_id, "module_id": module_id, rest_paramter: True, 
-									"module_type": self.module_type}, 
-									projection={"_id": False}).to_list(100)
-							if not result:
-								__message.append("Insufficient permissions to provide %s permission"%rest_paramter)
-							else:
-								yield add_permission(user_id, module_id, module["module_name"], self.module_type,
-								 {rest_paramter: True}, 
-								 module["parent_id"], granter_id, self.permission_collection)
-								 
+				if granter["user_type"] == "superadmin":
+
+								pprint ("Adding permission by superadmin")
+								yield Permissions.set_permission_from_obj(user, module, permission, parent_id, 
+									granter_id, self.permission_collection)
 				##is granter is superadmin or admin, all permissions will be added to the user
 				else:
+					pprint ("Adding permission by user_type who is not superadmin")
+					for rest_parameter in ["get", "delete", "edit", "add_child"]:
+						if permission[rest_parameter]:
+							result = yield Permissions.get_permission_rest_parameter(granter, module, rest_parameter, self.permission_collection)
+							if not result:
+								raise Exception("Insufficient permissions to provide %s permission"%rest_parameter)
+							else:
+								print ("user_type <<%s>> with user_id<<%s>> have %s on %s"%(granter["user_type"], granter["user_id"], rest_parameter, module["module_id"]))
+								yield Permissions.set_permission_rest_paramter(user, module, parent, granter, rest_parameter, self.permission_collection)
 
-								pprint ("Adding permission by superadmin or admin")
-								yield add_permission(user_id, module_id, module["module_name"], self.module_type,
-								 permission, 
-								 module["parent_id"], granter_id, self.permission_collection)
+
 
 
 
@@ -420,6 +431,10 @@ class Generic(tornado.web.RequestHandler):
 		"""
 		
 		user_id = self.request.arguments.get("user_id")[0].decode("utf-8")
+		try:
+			parent_id = self.request.arguments.get("parent_id")[0].decode("utf-8")
+		except Exception:
+			parent_id = None
 		modules = []
 		try:
 			skip = self.request.arguments.get("skip")[0].decode("utf-8")
@@ -441,22 +456,29 @@ class Generic(tornado.web.RequestHandler):
 
 		if user["user_type"] == "superadmin":
 			if text_search:
-				modules = yield self.module_collection.find({"user_id": user["user_id"]},{"module_name":{"$text":{"$search": text_search}}}, projection={"_id": False}).skip(skip).limit(limit)
+				modules = yield self.module_collection.find({"parent_id": parent_id},{"module_name":{"$text":{"$search": text_search}}}, projection={"_id": False}).skip(skip).limit(limit)
 			else:
-				cursor = self.module_collection.find(projection={"_id": False}).skip(skip).limit(limit)
+				cursor = self.module_collection.find({"parent_id": parent_id}, projection={"_id": False}).skip(skip).limit(limit)
 				while (yield cursor.fetch_next):
 					modules.append(cursor.next_object())
 			[module.update({"permission": {"get": True, "delete": True, "add_child": True, "edit": True}}) for module in modules]
 		
 		else:
-				modules = yield Permissions.get_modules(user, skip, limit, self.module_type, text_search, self.module_collection, self.permission_collection)
+				modules = yield Permissions.get_modules(user, parent_id, skip, limit, self.module_type, text_search, self.module_collection, self.permission_collection)
 		
 		#Now the front end nees data in terms of module_ids and modules
 		module_ids = []
+		_modules = []
 		for module in modules:
 			module_ids.append(module.get("module_id"))
-
-		message = {"error": True, "success": False, "message": "Success", "data": {"modules": modules, "module_ids": module_ids}}
+			try:
+				children = len(module.get("children"))
+			except Exception as e:
+				children = 0
+			module.update({"children": children})
+			_modules.append(module)
+		
+		message = {"error": True, "success": False, "message": "Success", "data": {"modules": _modules, "module_ids": module_ids}}
 		pprint (message)
 		self.write(message)
 		self.finish()
