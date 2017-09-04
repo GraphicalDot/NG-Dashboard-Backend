@@ -113,7 +113,7 @@ r5 = requests.post("http://localhost:8000/users", data=json.dumps({"first_name":
 
 users = {"superadmin": r1.json()["data"], "admin": r2.json()["data"], "user_one": r3.json()["data"], "user_two": r4.json()["data"], "user_three":r5.json()["data"] }
 
-f = users_collection.update({"user_id": users["superadmin"]["user_id"]}, {"$set": {"username": "Terminator", "password": "1234"}}, upsert=False)
+f = users_collection.update({"user_id": users["superadmin"]["user_id"]}, {"$set": {"username": "q", "password": "q"}}, upsert=False)
 #pprint (f)
 pprint (users)
 
@@ -194,7 +194,7 @@ domains_object = {"superadmin": r1.json()["data"], "admin": r2.json()["data"], "
 
 ##logger.error("checking get permissions")
 r = requests.get(DOMAIN_URL, params={"user_id": users["superadmin"]["user_id"]})
-if domains.count() == len(r.json()["data"]["module_ids"]):
+if domains.count() == r.json()["data"]["module_count"]:
 		_str = "Get request by superadmin on domain getting all the domains".ljust(200) + "****Test Passed <<5>>***" + "\n"
 		cprint(_str, "green")
 else:
@@ -206,7 +206,7 @@ else:
 ##logger.error("admin will get all domains but only those whose creation_approval== True, which is only one domain created by superadmin")
 r = requests.get(DOMAIN_URL, params ={"user_id": users["admin"]["user_id"]})
 cprint ("As admin user will get every possible domain but only those whose creation_approval==True and deletion_approval=False", "green")
-if domains.find({"creation_approval": True, "deletion_approval": False}).count() == len(r.json()["data"]["module_ids"]):
+if domains.find({"creation_approval": True, "deletion_approval": False}).count() == r.json()["data"]["module_count"]:
 		_str = "Get request by admin on domain getting all the domains with flags".ljust(200) + "****Test Passed <<6>>***" + "\n"
 		cprint(_str, "green")
 else:
@@ -488,13 +488,13 @@ bar = progressbar.ProgressBar(redirect_stdout=True)
 
 concepts = []
 pprint ("Adding concepts")
-for i in range(500):
+for i in range(50):
 	domain = random.choice([("user_two", domains_object["user_two"]["module_id"]),   ("admin", domains_object["admin"]["module_id"]), ("superadmin", domains_object["superadmin"]["module_id"])])
 	r = requests.post("http://localhost:8000/concepts", data=json.dumps({"module_name": "%s"%fake.name(), 
 														"parent_id": domain[1],
 														 "description": fake.text(), 
 														 "user_id": users["superadmin"]["user_id"]}))
-	bar.update(i*100/500)
+	bar.update(i*100/50)
 	if r.status_code == 200:
 		concepts.append((domain[0], domain[1], r.json()["data"] ))
 
@@ -504,13 +504,13 @@ for i in range(500):
 bar = progressbar.ProgressBar(redirect_stdout=True)
 pprint ("Adding subconcepts")
 subconcepts = []
-for i in range(1000):
+for i in range(50):
 	concept = random.choice(concepts)
 	r = requests.post("http://localhost:8000/subconcepts", data=json.dumps({"module_name": "%s"%fake.name(), 
 														"parent_id": concept[2]["module_id"],
 														 "description": fake.text(), 
 														 "user_id": users["superadmin"]["user_id"]}))
-	bar.update(i*100/1000)
+	bar.update(i*100/50)
 	subconcepts.append((concept[0], concept[1], concept[2], r.json()["data"] ))
 
 
@@ -527,9 +527,9 @@ for i in range(1000):
 	nanoskills.append((subconcept[0], subconcept[1], subconcept[2], subconcept[3], r.json()["data"] ))
 
 
-
-
 """
+
+
 r = requests.get(DOMAIN_URL, params={"user_id": users["admin"]["user_id"]})
 r = requests.get(DOMAIN_URL, params={"user_id": users["admin"]["user_id"]})
 cprint ("Now Admin will give permission to user_one for the deletion on domain created by user_two", "green")

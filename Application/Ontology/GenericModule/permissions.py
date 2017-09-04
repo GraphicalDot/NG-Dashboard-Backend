@@ -170,10 +170,6 @@ class Permissions(object):
             while (yield cursor.fetch_next):
                 modules.append(cursor.next_object())
             
-            prin
-            t (parent_id)
-            print (user["user_id"])
-            print (modules)
             result = []
             for permission in modules:
                 module = yield module_collection.find_one({"module_id": permission.get("module_id"), "creation_approval": True, "deletion_approval": False}, 
@@ -181,7 +177,8 @@ class Permissions(object):
                 if module:
                     module.update({"permission": permission["permission"]})
                     result.append(module)
-            return (modules, module_count)
+                    print (module)
+            return (result, module_count)
         
 
 

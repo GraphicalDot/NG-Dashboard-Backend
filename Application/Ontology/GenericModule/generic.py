@@ -470,6 +470,7 @@ class Generic(tornado.web.RequestHandler):
 
 		user = yield self.user_collection.find_one({"user_id": user_id})
 
+		
 		if user["user_type"] == "superadmin":
 			modules = []
 			if search_text:
@@ -498,14 +499,15 @@ class Generic(tornado.web.RequestHandler):
 		for module in modules:
 
 			module_ids.append(module.get("module_id"))
-			children = len(module.get("children"))
+			try:
+				children = len(module.get("children"))
+			except Exception as e:
+				print (e)
 			module.update({"children": children})
-			pprint (module)
 			_modules.append(module)
 		
 		_modules = sorted(_modules,  key= lambda x: x["children"], reverse=True)
 
-		pprint (_modules)
 		pprint ("skip == <<%s>> and limit = <<%s>>"%(skip, limit))
 		message = {"error": True, "success": False, "message": "Success", "data": {"modules": _modules, "module_ids": module_ids, 
 						"module_count": module_count, "pages": math.ceil(module_count/limit)}}
