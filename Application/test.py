@@ -335,7 +335,6 @@ r = requests.get(DOMAIN_URL, params={"user_id": users["admin"]["user_id"]})
 cprint ("admin will try to provide permission to user_one on domain created by user_two", "green")
 cprint ("The request will fail as admin doesnt have the permission delete permission on domain created by user two", "green")
 cprint ("This is the domains admin got on which he have get and delete permissions, he got only two as one of the domain is still not creation approval by superadmin", "green")
-pprint (r.json())
 if len(r.json()["data"]) == 2 and r.json()["data"]["modules"][0]["permission"] == {"get": True, "add_child": False, "delete": False, "edit": False}:
 		_str = "NUmber of domains with permission object which admin got is TWO".ljust(200) + "****Test Passed <<16>>***" + "\n"
 		cprint(_str, "green")
@@ -349,7 +348,6 @@ pprint ("%s/%s"%(DOMAIN_URL,domains_object["user_two"]["module_id"]))
 r = requests.put("%s/%s"%(DOMAIN_URL, domains_object["user_two"]["module_id"] ), data=json.dumps({"user_id": users["admin"]["user_id"], "granter_id": users["superadmin"]["user_id"],"permission": permission}))
 cprint ("Now the superadmin will give permission to admin for the deletion on domain created by user_two", "green")
 cprint ("After this result admin %s will have delete permission on %s"%(users["admin"]["user_id"], domains_object["user_two"]["module_id"]), "green")
-pprint (r.json())
 
 
 
@@ -368,7 +366,6 @@ else:
 
 r = requests.get(DOMAIN_URL, params={"user_id": users["user_one"]["user_id"]})
 cprint ("Checking get modules for user_one %s"%(users["user_one"]["user_id"]), "green")
-pprint (r.json())
 if len(r.json()["data"]["module_ids"]) == 0:
 		message = "The user_one %s havent received any domain, as he desnt have any permission on any domain, neither he created any"%users["user_one"]["user_id"]
 		_str = message.ljust(200) + "****Test Passed <<18>>***" + "\n"
@@ -412,7 +409,6 @@ pprint ("%s/%s"%(DOMAIN_URL,domains_object["user_two"]["module_id"]))
 r = requests.put("%s/%s"%(DOMAIN_URL, domains_object["user_two"]["module_id"] ), data=json.dumps({"user_id": users["user_one"]["user_id"], "granter_id": users["admin"]["user_id"],"permission": permission}))
 cprint ("Now the admin will give <<GET>>permission to user_one %s on domain created by user_two %s"%(users["user_one"]["user_id"], domains_object["user_two"]["module_id"]), "green")
 cprint ("After this result user_one %s will have get permission on %s"%(users["user_one"]["user_id"], domains_object["user_two"]["module_id"]), "green")
-pprint (r.json())
 
 if r.json()["success"]:
 		message = "The admin had get permisisons on domain %s so he provided get permission to user_one %s"%(domains_object["user_two"]["module_id"],users["user_one"]["user_id"])
@@ -425,7 +421,6 @@ else:
 
 r = requests.get(DOMAIN_URL, params={"user_id": users["user_one"]["user_id"]})
 cprint ("Checking get modules for user_one, NOw will get a domain created by user_two as admin provied get permisison to user_one", "green")
-pprint (r.json())
 if len(r.json()["data"]["module_ids"]) == 1:
 		message = "The user_one %s received a domain %s"%(users["user_one"]["user_id"], domains_object["user_two"]["module_id"])
 		_str = message.ljust(200) + "****Test Passed <<21>>***" + "\n"
@@ -448,7 +443,6 @@ pprint ("%s/%s"%(DOMAIN_URL,domains_object["user_two"]["module_id"]))
 r = requests.put("%s/%s"%(DOMAIN_URL, domains_object["user_two"]["module_id"] ), data=json.dumps({"user_id": users["user_one"]["user_id"], "granter_id": users["superadmin"]["user_id"],"permission": permission}))
 cprint ("Now the admin will give <<GET>>permission to user_one %s on domain created by user_two %s"%(users["user_one"]["user_id"], domains_object["user_two"]["module_id"]), "green")
 cprint ("After this result user_one %s will have get permission on %s"%(users["user_one"]["user_id"], domains_object["user_two"]["module_id"]), "green")
-pprint (r.json())
 
 if r.json()["success"]:
 		message = "The admin had get permisisons on domain %s so he provided get permission to user_one %s"%(domains_object["user_two"]["module_id"],users["user_one"]["user_id"])
@@ -469,7 +463,6 @@ else:
 ## will be overidden by superadmin permissions pobject given to this user
 r = requests.get(DOMAIN_URL, params={"user_id": users["user_one"]["user_id"]})
 cprint ("Checking get modules for user_one, NOw will get a domain created by user_two as admin provied get permisison to user_one", "green")
-pprint (r.json())
 if len(r.json()["data"]["module_ids"]) == 1:
 		message = "The user_one %s received a domain %s"%(users["user_one"]["user_id"], domains_object["user_two"]["module_id"])
 		_str = message.ljust(200) + "****Test Passed <<21>>***" + "\n"
@@ -519,15 +512,18 @@ for i in range(10):
 bar = progressbar.ProgressBar(redirect_stdout=True)
 pprint ("Adding nanoskills")
 nanoskills = []
-for i in range(100):
-	subconcept = random.choice(subconcepts)
+for i in range(10):
+	#subconcept = random.choice(subconcepts)
+	subconcept = subconcepts[3]
 	r = requests.post("http://localhost:8000/nanoskills", data=json.dumps({"module_name": "%s"%fake.name(), 
 														"parent_id": subconcept[3]["module_id"],
 														 "description": fake.text(), 
 														 "user_id": users["superadmin"]["user_id"]}))
-	bar.update(i*100/100)
+	bar.update(i*100/10)
 	nanoskills.append((subconcept[0], subconcept[1], subconcept[2], subconcept[3], r.json()["data"] ))
 
+for i in nanoskills:
+	print (i[4]["module_id"])
 
 
 
@@ -535,7 +531,7 @@ for i in range(100):
 bar = progressbar.ProgressBar(redirect_stdout=True)
 pprint ("Adding Questions")
 questions = []
-for i in range(1000):
+for i in range(100):
 	nanoskill = random.choice(nanoskills)
 	r = requests.post("http://localhost:8000/questions", data=json.dumps({"module_name": "%s"%fake.name(), 
 														"question_type": "multiple_choice",
@@ -545,8 +541,17 @@ for i in range(1000):
 														 "description": fake.text(), 
 														 "user_id": users["superadmin"]["user_id"]}))
 
-	bar.update(i*100/1000)
+	bar.update(i*100/100)
 	questions.append((nanoskill[0], nanoskill[1], nanoskill[2], nanoskill[3], nanoskill[4], r.json()["data"] ))
+
+
+
+pprint (subconcepts[3][3]["parent_id"])
+pprint (subconcepts[3][3]["module_id"])
+pprint (users["superadmin"]["user_id"])
+r = requests.delete("http://localhost:8000/subconcepts", params={"module_id": subconcepts[3][3]["module_id"], "user_id": users["superadmin"]["user_id"]})
+pprint (r.json())
+
 
 """
 

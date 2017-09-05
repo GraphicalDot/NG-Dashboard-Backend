@@ -17,22 +17,16 @@ from AuthenticationModule.authentication import auth
 class DeleteModule(object):
 	@staticmethod
 	@coroutine
-	def delete_module_n_children(db, module, module_collection, child_collection_name, parent_collection):
-		children = module["children"]
-
-		##THis will run only the first time, but while deleting children there parent has already been deleted
-		yield parent_collection.update_one({"module_id": module["parent_id"]}, {"$pull": {"children": {'module_id': module["module_id"],
-		'module_name': module["module_name"]}}}, upsert=False)
-
-		self.module_collection.delete_one({"module_id": module["module_id"]})
+	def delete_children(db, children, child_collection_name):
 		child_collection = db[child_collection_name]
 		for child in children:
 			child = yield child_collection.find_one({"module_id": child["module_id"]})
-			#delete_id = yield collection.delete_one({"module_id": child["module_id"]})
+			delete_id = yield child_collection.delete_one({"module_id": child["module_id"]})
 			try:
-				child_child_collection_name = child["child_collection_name"]
-				if child_child_collection_name:
-					yield DeleteModule.delete_children(db, child, collection, child_child_collection_name)
+				_child_collection_name = child["child_collection_name"]
+				children = child["children"]
+				if _child_collection_name:
+					yield DeleteModule.delete_children(db, children, _child_collection_name)
 			except Exception as e:
 				logger.info(e)
 				pass
@@ -40,50 +34,74 @@ class DeleteModule(object):
 		return False
 
 
-
-
 	@staticmethod
 	@coroutine
-	def delete_module_n_children_permissions(db, module, module_collection, child_collection_name, permission_collection):
+	def delete_module(db, module, module_collection, child_collection_name, parent_collection, permission_collection):
 		children = module["children"]
 		
-		yield permission_collection.delete_one({"module_id": module["module_id"]})
-		collection = db[child_collection_name]
-		for child in children:
-			child = yield collection.find_one({"module_id": child["module_id"]})
-			delete_id = yield permisision_collection.delete_one({"module_id": child["module_id"]})
-			try:
-				child_children = child["children"]
-				child_child_collection_name = child["child_collection_name"]
-				if child_child_collection_name:
-					yield DeleteModule.delete_children(db, child_children, child_child_collection_name)
-			except Exception as e:
-				logger.info(e)
-				pass
+		##deleteing module from the module collection
+		yield module_collection.delete_one({"module_id": module["module_id"]})
 
-		return False
+		##DEleting all permissions for the module
+		yield permission_collection.delete_many({"module_id": module["module_id"]})
+
+		## Deleting child entry from the parent id as child_d is stroed in the parent under the array named as 
+		## children
+		yield parent_collection.update_one({"module_id": module["parent_id"]}, {"$pull": {"children": {'module_id': module["module_id"],
+		'module_name': module["module_name"]}}}, upsert=False)
+
+		##deleting children one by one
+		yield  DeleteModule.delete_children_permissions(db, children, child_collection_name, permission_collection)
+		yield  DeleteModule.delete_children(db, children, child_collection_name)
+		return 
 
 
 
 	@staticmethod
 	@coroutine
-	def mark_deletion(db, module, module_collection, child_collection_name, deletion_approval):
-		module = yield module_collection.find({"module_id": module["module_id"]})
-		children = module["children"]
-
-		self.module_collection.update_one({"module_id": module["module_id"]}, {"deletion_approval": deletion_approval}, upsert=False)
-
-		collection = db[child_collection_name]
+	def delete_children_permissions(db, children, child_collection_name, permission_collection):
+		child_collection = db[child_collection_name]
 		for child in children:
-			child = yield collection.find_one({"module_id": child["module_id"]})
-			delete_id = yield collection.update_one({"module_id": child["module_id"]}, {"deletion_approval": deletion_approval}, upsert=False)
+			child = yield child_collection.find_one({"module_id": child["module_id"]})
+			delete_id = yield permission_collection.delete_many({"module_id": child["module_id"]})
 			try:
-				child_children = child["children"]
-				child_child_collection_name = child["child_collection_name"]
-				if child_child_collection_name:
-					DeleteModule.delete_children(db, child_children, child_child_collection_name)
+				_child_collection_name = child["child_collection_name"]
+				children = child["children"]
+				if _child_collection_name:
+					yield DeleteModule.delete_children_permissions(db, children, _child_collection_name, permission_collection)
+			except Exception as e:
+				logger.info(e)
+				pass
+		return False
+		
+	@staticmethod
+	@coroutine
+	def mark_module(db, module, module_collection, child_collection_name, parent_collection, permission_collection):
+		children = module["children"]
+		
+		##deleteing module from the module collection
+		yield module_collection.update_one({"module_id": module["module_id"]}, {"deletion_approval": True}, upsert=False)
+		##deleting children one by one
+		yield  DeleteModule.delete_children(db, children, child_collection_name)
+		return 
+
+
+	@staticmethod
+	@coroutine
+	def mark_children(db, children, child_collection_name):
+		child_collection = db[child_collection_name]
+		for child in children:
+			child = yield child_collection.find_one({"module_id": child["module_id"]})
+			delete_id = yield child_collection.update_one({"module_id": child["module_id"]}, {"deletion_approval": True}, upsert=False )
+			try:
+				_child_collection_name = child["child_collection_name"]
+				children = child["children"]
+				if _child_collection_name:
+					yield DeleteModule.delete_children(db, children, _child_collection_name)
 			except Exception as e:
 				logger.info(e)
 				pass
 
 		return False
+
+

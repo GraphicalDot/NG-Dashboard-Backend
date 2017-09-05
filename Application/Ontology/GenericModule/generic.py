@@ -421,7 +421,15 @@ class Generic(tornado.web.RequestHandler):
 	@tornado.web.asynchronous
 	@tornado.gen.coroutine
 	def delete(self):
-		
+		"""
+			If superadmin makes an request, Everything will be deleted, Module entry from the parent sand 
+			all its chidren and all the enteries of this module and its children in the permission collection.abs
+
+			If a user is not superadmin, if this user has delete permission on the module then the deletion_approval will become 
+			True, in this case, which will then pass onto superadmin for deletion, If the delete_approval is true this domain and its children and its entry in the parent 
+			wil not be shown to any users except to the superadmin and the user who created it. (Provision has to be made to make it deleteion_approval =False) for any user
+			who would have edit request on this module
+		"""
 		user_id = self.request.arguments.get("user_id")[0].decode("utf-8")
 		module_id = self.request.arguments.get("module_id")[0].decode("utf-8")
 		#post_arguments = json.loads(self.request.body.decode("utf-8"))
@@ -432,10 +440,9 @@ class Generic(tornado.web.RequestHandler):
 		module = yield self.module_collection.find_one({"module_id": module_id})
 		user = yield self.user_collection.find_one({"user_id": user_id})
 		if user["user_type"] == "superadmin":
-				yield DeleteModule.delete_module_n_children_permissions(self.db, module, self.module_collection, 
-														self.child_collection_name, self.permission_collection)
-				yield DeleteModule.delete_module_n_children(self.db, module, self.module_collection,
-					self.child_collection_name, self.permission_collection)
+				yield DeleteModule.delete_module(self.db, module, self.module_collection, self.child_collection_name, 
+						self.parent_collection, self.permission_collection)
+
 					
 				message = {"error": False, "success": True, "message": "Module %s with module_id %s and module_name %s has been \
 				deleted"%(self.module_type, module_id, module["module_name"]), "data": module_id}
@@ -447,7 +454,10 @@ class Generic(tornado.web.RequestHandler):
 		result = yield Permission.get_permission_delete(user, module, self.permission_collection)
 		if result:
 			##mark domain and its children under "deletion_approval": pending
-			yield DeleteModule.mark_deletion(self.db, module, self.module_collection, self.child_collection_name, True)			
+			yield DeleteModule.mark_module(self.db, module, self.module_collection, self.child_collection_name, 
+						self.parent_collection, self.permission_collection)
+
+			
 			message = {"error": False, "success": True, "data": "Module %s with module_id %s and module_name %s submitted for deletion and requires superadmin approval\
 									"%(self.module_type, module_id, module["module_name"]), "data": module_id}
 
