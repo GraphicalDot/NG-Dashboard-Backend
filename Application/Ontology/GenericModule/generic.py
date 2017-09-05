@@ -3,7 +3,7 @@ import tornado.web
 from tornado.escape import json_decode as TornadoJsonDecode
 from SettingsModule.settings  import domain_collection_name, indian_time, jwt_secret, \
 									 default_document_limit, user_collection_name, permission_collection_name, \
-									 action_collection_name
+									 action_collection_name, question_types
 
 import operator
 from .delete_module import DeleteModule
@@ -216,10 +216,44 @@ class Generic(tornado.web.RequestHandler):
 				creation_approval = True
 			else: 
 				creation_approval = False
-				
 
-			#TODO
-			module = {'module_name': "%s-%s"%(self.module_type, module_name), "description": description, "parent_id": parent_id, "parents": parents,
+			if self.module_type == "question":
+				question_text = post_arguments.get("question_text")
+				options = post_arguments.get("options")
+				question_type = post_arguments.get("question_type")
+				hint = post_arguments.get("hint", None)
+				images = post_arguments.get("images", None)
+				videos = post_arguments.get("videos", None)
+				
+				if None in [question_text, question_type, options]:
+					raise Exception("Fields shouldnt be empty")
+				if question_type not in question_types:
+					raise Exception("Specify a valid question type")
+						
+				if options == []:
+					raise Exception("options for question shouldnt be left empty")
+				
+				##this is to index all parents of this question, so a search can be build on the parents of this question
+				parent_ngrams = []
+				for parent in parents:
+					parent_ngrams.extend(parent.get("module_name"))
+
+				module = {'module_name': "%s-%s"%(self.module_type, module_name), "description": description, "parent_id": parent_id, "parents": parents,
+							 "module_id": module_id, "utc_epoch": time.time(), "indian_time": indian_time(), "username": user["username"],
+							 "user_id": user_id, "status": True, "deletion_approval": False, "creation_approval": creation_approval, "parent_name": parent_module["module_name"],
+							  "module_type": self.module_type, "user_type": user["user_type"], "child_collection_name": self.child_collection_name, "children": [],
+							  "ngrams": " ".join(self.make_ngrams(module_name) + self.make_ngrams(question_text)  + self.make_ngrams(description) + parent_ngrams), 
+							  "question_text": question_text, 
+							  "options": options, 
+							  "question_type": question_type,
+							  "hint": hint,
+							  "images": images,
+							  "videos": videos
+							  }
+
+			else:
+				#TODO
+				module = {'module_name': "%s-%s"%(self.module_type, module_name), "description": description, "parent_id": parent_id, "parents": parents,
 							 "module_id": module_id, "utc_epoch": time.time(), "indian_time": indian_time(), "username": user["username"],
 							 "user_id": user_id, "status": True, "deletion_approval": False, "creation_approval": creation_approval, 
 							  "module_type": self.module_type, "user_type": user["user_type"], "child_collection_name": self.child_collection_name, "children": [],
@@ -386,9 +420,10 @@ class Generic(tornado.web.RequestHandler):
 	@cors
 	@tornado.web.asynchronous
 	@tornado.gen.coroutine
-	def delete(self, module_id):
+	def delete(self):
+		
 		user_id = self.request.arguments.get("user_id")[0].decode("utf-8")
-		deletion_approval = self.request.arguments.get("deletion_approval")[0].decode("utf-8")
+		module_id = self.request.arguments.get("module_id")[0].decode("utf-8")
 		#post_arguments = json.loads(self.request.body.decode("utf-8"))
 		#user_id = post_arguments.get("user_id", None) ##who created this category
 		if not module_id:
@@ -396,15 +431,12 @@ class Generic(tornado.web.RequestHandler):
 		
 		module = yield self.module_collection.find_one({"module_id": module_id})
 		user = yield self.user_collection.find_one({"user_id": user_id})
-		deletion_approval
-		pprint (user)
-		pprint (user)
 		if user["user_type"] == "superadmin":
-				if not deletion_approval:
-						yield DeleteModule.mark_deletion(self.db, module, self.module_collection, self.child_collection_name, False)			
-				else:
-					yield DeleteModule.delete_module_n_children_permissions(self.db, module, self.module_collection, self.child_collection_name, self.permission_collection)
-					yield DeleteModule.delete_module_n_children(self.db, module, self.module_collection, self.child_collection_name)
+				yield DeleteModule.delete_module_n_children_permissions(self.db, module, self.module_collection, 
+														self.child_collection_name, self.permission_collection)
+				yield DeleteModule.delete_module_n_children(self.db, module, self.module_collection,
+					self.child_collection_name, self.permission_collection)
+					
 				message = {"error": False, "success": True, "message": "Module %s with module_id %s and module_name %s has been \
 				deleted"%(self.module_type, module_id, module["module_name"]), "data": module_id}
 				self.write(message)

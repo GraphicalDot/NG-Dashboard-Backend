@@ -11,7 +11,7 @@ mongo_ip = "localhost"
 mongo_port = 27017
 mongo_db_name = "dashboard"
 user_collection_name = "users"
-
+question_types = ["multiple_choice"]
 
 permission_collection_name = "permissions"
 

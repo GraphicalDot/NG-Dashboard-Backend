@@ -53,6 +53,7 @@ domains = db[domain_collection_name]
 concepts = db[concept_collection_name]
 subconcepts = db[subconcept_collection_name]
 nanoskills = db[nanoskill_collection_name]
+questions = db[question_collection_name]
 permissions = db[permission_collection_name]
 
 logger.error("Deleting all collections to start a fresh run")
@@ -61,6 +62,7 @@ logger.error(domains.remove())
 logger.error(concepts.remove())
 logger.error(subconcepts.remove())
 logger.error(nanoskills.remove())
+logger.error(questions.remove())
 logger.error(permissions.remove())
 logger.error("Checking api for users")
 
@@ -504,18 +506,52 @@ for i in range(50):
 bar = progressbar.ProgressBar(redirect_stdout=True)
 pprint ("Adding subconcepts")
 subconcepts = []
-for i in range(50):
+for i in range(10):
 	concept = random.choice(concepts)
 	r = requests.post("http://localhost:8000/subconcepts", data=json.dumps({"module_name": "%s"%fake.name(), 
 														"parent_id": concept[2]["module_id"],
 														 "description": fake.text(), 
 														 "user_id": users["superadmin"]["user_id"]}))
-	bar.update(i*100/50)
+	bar.update(i*100/10)
 	subconcepts.append((concept[0], concept[1], concept[2], r.json()["data"] ))
 
 
 bar = progressbar.ProgressBar(redirect_stdout=True)
 pprint ("Adding nanoskills")
+nanoskills = []
+for i in range(100):
+	subconcept = random.choice(subconcepts)
+	r = requests.post("http://localhost:8000/nanoskills", data=json.dumps({"module_name": "%s"%fake.name(), 
+														"parent_id": subconcept[3]["module_id"],
+														 "description": fake.text(), 
+														 "user_id": users["superadmin"]["user_id"]}))
+	bar.update(i*100/100)
+	nanoskills.append((subconcept[0], subconcept[1], subconcept[2], subconcept[3], r.json()["data"] ))
+
+
+
+
+
+bar = progressbar.ProgressBar(redirect_stdout=True)
+pprint ("Adding Questions")
+questions = []
+for i in range(1000):
+	nanoskill = random.choice(nanoskills)
+	r = requests.post("http://localhost:8000/questions", data=json.dumps({"module_name": "%s"%fake.name(), 
+														"question_type": "multiple_choice",
+														"question_text": fake.text(),
+														"options": [fake.paragraph(), fake.paragraph(), fake.paragraph(), fake.paragraph()],
+														"parent_id": nanoskill[4]["module_id"],
+														 "description": fake.text(), 
+														 "user_id": users["superadmin"]["user_id"]}))
+
+	bar.update(i*100/1000)
+	questions.append((nanoskill[0], nanoskill[1], nanoskill[2], nanoskill[3], nanoskill[4], r.json()["data"] ))
+
+"""
+
+bar = progressbar.ProgressBar(redirect_stdout=True)
+pprint ("Adding questions")
 nanoskills = []
 for i in range(1000):
 	subconcept = random.choice(subconcepts)
@@ -527,7 +563,8 @@ for i in range(1000):
 	nanoskills.append((subconcept[0], subconcept[1], subconcept[2], subconcept[3], r.json()["data"] ))
 
 
-"""
+
+
 
 
 r = requests.get(DOMAIN_URL, params={"user_id": users["admin"]["user_id"]})

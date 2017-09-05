@@ -17,20 +17,22 @@ from AuthenticationModule.authentication import auth
 class DeleteModule(object):
 	@staticmethod
 	@coroutine
-	def delete_module_n_children(db, module, module_collection, child_collection_name):
-		module = yield module_collection.find({"module_id": module["module_id"]})
+	def delete_module_n_children(db, module, module_collection, child_collection_name, parent_collection):
 		children = module["children"]
-		
+
+		##THis will run only the first time, but while deleting children there parent has already been deleted
+		yield parent_collection.update_one({"module_id": module["parent_id"]}, {"$pull": {"children": {'module_id': module["module_id"],
+		'module_name': module["module_name"]}}}, upsert=False)
+
 		self.module_collection.delete_one({"module_id": module["module_id"]})
-		collection = db[child_collection_name]
+		child_collection = db[child_collection_name]
 		for child in children:
-			child = yield collection.find_one({"module_id": child["module_id"]})
-			delete_id = yield collection.delete_one({"module_id": child["module_id"]})
+			child = yield child_collection.find_one({"module_id": child["module_id"]})
+			#delete_id = yield collection.delete_one({"module_id": child["module_id"]})
 			try:
-				child_children = child["children"]
 				child_child_collection_name = child["child_collection_name"]
 				if child_child_collection_name:
-					DeleteModule.delete_children(db, child_children, child_child_collection_name)
+					yield DeleteModule.delete_children(db, child, collection, child_child_collection_name)
 			except Exception as e:
 				logger.info(e)
 				pass
@@ -43,10 +45,9 @@ class DeleteModule(object):
 	@staticmethod
 	@coroutine
 	def delete_module_n_children_permissions(db, module, module_collection, child_collection_name, permission_collection):
-		module = yield module_collection.find({"module_id": module["module_id"]})
 		children = module["children"]
 		
-		self.permission_collection.delete_one({"module_id": module["module_id"]})
+		yield permission_collection.delete_one({"module_id": module["module_id"]})
 		collection = db[child_collection_name]
 		for child in children:
 			child = yield collection.find_one({"module_id": child["module_id"]})
@@ -55,7 +56,7 @@ class DeleteModule(object):
 				child_children = child["children"]
 				child_child_collection_name = child["child_collection_name"]
 				if child_child_collection_name:
-					DeleteModule.delete_children(db, child_children, child_child_collection_name)
+					yield DeleteModule.delete_children(db, child_children, child_child_collection_name)
 			except Exception as e:
 				logger.info(e)
 				pass

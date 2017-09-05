@@ -36,7 +36,7 @@ class QuestionPermissions(GenericPermissions):
 		self.parent_name = "domain"
 		self.module_collection = self.db[question_collection_name]
 		self.user_collection = self.db[user_collection_name]
-		self.module_type = "concept"
+		self.module_type = "question"
 		self.child_collection = None
 		self.child_collection_name = None
 		self.permission_collection = self.db[permission_collection_name]
@@ -47,10 +47,10 @@ class Questions(Generic):
 	def initialize(self):
 		self.db = self.settings["db"]
 		self.parent_collection = self.db[nanoskill_collection_name]
-		self.parent_name = "domain"
+		self.parent_name = "question"
 		self.module_collection = self.db[question_collection_name]
 		self.user_collection = self.db[user_collection_name]
-		self.module_type = "concept"
+		self.module_type = "question"
 		self.child_collection = None
 		self.child_collection_name = None
 		self.permission_collection = self.db[permission_collection_name]
