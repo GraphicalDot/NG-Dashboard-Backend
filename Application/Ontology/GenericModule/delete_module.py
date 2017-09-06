@@ -50,9 +50,10 @@ class DeleteModule(object):
 		yield parent_collection.update_one({"module_id": module["parent_id"]}, {"$pull": {"children": {'module_id': module["module_id"],
 		'module_name': module["module_name"]}}}, upsert=False)
 
+		if child_collection_name:
 		##deleting children one by one
-		yield  DeleteModule.delete_children_permissions(db, children, child_collection_name, permission_collection)
-		yield  DeleteModule.delete_children(db, children, child_collection_name)
+			yield  DeleteModule.delete_children_permissions(db, children, child_collection_name, permission_collection)
+			yield  DeleteModule.delete_children(db, children, child_collection_name)
 		return 
 
 

@@ -430,16 +430,19 @@ class Generic(tornado.web.RequestHandler):
 			wil not be shown to any users except to the superadmin and the user who created it. (Provision has to be made to make it deleteion_approval =False) for any user
 			who would have edit request on this module
 		"""
+
+		pprint (self.request.arguments)
 		user_id = self.request.arguments.get("user_id")[0].decode("utf-8")
 		module_id = self.request.arguments.get("module_id")[0].decode("utf-8")
-		#post_arguments = json.loads(self.request.body.decode("utf-8"))
-		#user_id = post_arguments.get("user_id", None) ##who created this category
-		if not module_id:
-			raise Exception("Please send the module id")
+		try:
+			#post_arguments = json.loads(self.request.body.decode("utf-8"))
+			#user_id = post_arguments.get("user_id", None) ##who created this category
+			if not module_id:
+				raise Exception("Please send the module id")
 		
-		module = yield self.module_collection.find_one({"module_id": module_id})
-		user = yield self.user_collection.find_one({"user_id": user_id})
-		if user["user_type"] == "superadmin":
+			module = yield self.module_collection.find_one({"module_id": module_id})
+			user = yield self.user_collection.find_one({"user_id": user_id})
+			if user["user_type"] == "superadmin":
 				yield DeleteModule.delete_module(self.db, module, self.module_collection, self.child_collection_name, 
 						self.parent_collection, self.permission_collection)
 
@@ -451,23 +454,30 @@ class Generic(tornado.web.RequestHandler):
 				return
 				
 
-		result = yield Permission.get_permission_delete(user, module, self.permission_collection)
-		if result:
+			result = yield Permission.get_permission_delete(user, module, self.permission_collection)
+			if result:
 			##mark domain and its children under "deletion_approval": pending
-			yield DeleteModule.mark_module(self.db, module, self.module_collection, self.child_collection_name, 
+				yield DeleteModule.mark_module(self.db, module, self.module_collection, self.child_collection_name, 
 						self.parent_collection, self.permission_collection)
 
 			
-			message = {"error": False, "success": True, "data": "Module %s with module_id %s and module_name %s submitted for deletion and requires superadmin approval\
+				message = {"error": False, "success": True, "data": "Module %s with module_id %s and module_name %s submitted for deletion and requires superadmin approval\
 									"%(self.module_type, module_id, module["module_name"]), "data": module_id}
 
-		else:
-			message = "Insufficient permissions"
-			self.set_status(400)
-			self.write(message)
+			else:
+				message = "Insufficient permissions"
+				self.set_status(400)
+				self.write(message)
+				self.finish()
+				return 
+		except Exception as e:
+			print (e)
+			self.set_status(403)
+			self.write(str(e))
 			self.finish()
 			return 
-	
+
+
 		self.write({"data": module_id})
 		self.finish()
 		return

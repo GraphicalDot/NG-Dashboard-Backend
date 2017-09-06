@@ -483,7 +483,7 @@ bar = progressbar.ProgressBar(redirect_stdout=True)
 
 concepts = []
 pprint ("Adding concepts")
-for i in range(50):
+for i in range(1):
 	domain = random.choice([("user_two", domains_object["user_two"]["module_id"]),   ("admin", domains_object["admin"]["module_id"]), ("superadmin", domains_object["superadmin"]["module_id"])])
 	r = requests.post("http://localhost:8000/concepts", data=json.dumps({"module_name": "%s"%fake.name(), 
 														"parent_id": domain[1],
@@ -499,7 +499,7 @@ for i in range(50):
 bar = progressbar.ProgressBar(redirect_stdout=True)
 pprint ("Adding subconcepts")
 subconcepts = []
-for i in range(10):
+for i in range(1):
 	concept = random.choice(concepts)
 	r = requests.post("http://localhost:8000/subconcepts", data=json.dumps({"module_name": "%s"%fake.name(), 
 														"parent_id": concept[2]["module_id"],
@@ -512,9 +512,9 @@ for i in range(10):
 bar = progressbar.ProgressBar(redirect_stdout=True)
 pprint ("Adding nanoskills")
 nanoskills = []
-for i in range(10):
+for i in range(1):
 	#subconcept = random.choice(subconcepts)
-	subconcept = subconcepts[3]
+	subconcept = subconcepts[0]
 	r = requests.post("http://localhost:8000/nanoskills", data=json.dumps({"module_name": "%s"%fake.name(), 
 														"parent_id": subconcept[3]["module_id"],
 														 "description": fake.text(), 
@@ -546,10 +546,11 @@ for i in range(100):
 
 
 
-pprint (subconcepts[3][3]["parent_id"])
-pprint (subconcepts[3][3]["module_id"])
+#pprint (subconcepts[3][3]["parent_id"])
+#pprint (subconcepts[3][3]["module_id"])
 pprint (users["superadmin"]["user_id"])
-r = requests.delete("http://localhost:8000/subconcepts", params={"module_id": subconcepts[3][3]["module_id"], "user_id": users["superadmin"]["user_id"]})
+#r = requests.delete("http://localhost:8000/subconcepts", params={"module_id": subconcepts[3][3]["module_id"], "user_id": users["superadmin"]["user_id"]})
+r = requests.delete("http://localhost:8000/questions", params={"module_id": questions[0][5]["module_id"], "user_id": users["superadmin"]["user_id"]})
 pprint (r.json())
 
 
