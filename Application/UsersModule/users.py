@@ -17,7 +17,7 @@ from AuthenticationModule.authentication import auth
 ## and gen.coroutine is a perfect to resolve a future object uyntillit is resolved
 
 import codecs
-
+import math
 from GeneralModule.cors import cors
 reader = codecs.getreader("utf-8")
 
@@ -67,7 +67,7 @@ class Users(tornado.web.RequestHandler):
 		##Permissions
 		##For the user other 
 
-		pprint (username)		
+		pprint (post_arguments)		
 		#user = yield db[credentials].find_one({'user_type': user_type, "username": username, "password": password})
 		try:
 			if None in [user_secret, username,  email ]:
@@ -83,8 +83,11 @@ class Users(tornado.web.RequestHandler):
 				raise Exception("User Exists")
 
 			_id = hashlib.sha1(email.encode("utf-8")).hexdigest()
-			password= hashlib.sha1(password.encode("utf-8")).hexdigest()
-			
+			password=hashlib.sha1(password.encode("utf-8")).hexdigest()
+
+			##This is because i have made the rest of the code for general purpose user as False for checking
+			if user_type == "general":
+				user_type = False			
 
 			"""
 			if category_permissions:
@@ -94,7 +97,8 @@ class Users(tornado.web.RequestHandler):
 			user = {'first_name': first_name, "last_name": last_name,"username": username, \
 							 "user_id": _id,"utc_epoch": time.time(), "indian_time": indian_time(), "email": email, 
 							 "password": password, "user_type": user_type,
-							 "permissions": permissions, "phone_number": phone_number, "create_domain": create_domain
+							 "permissions": permissions, "phone_number": phone_number, "create_domain": create_domain,
+							 "ngrams": " ".join(self.make_ngrams(username) + self.make_ngrams(email) + self.make_ngrams(first_name) + self.make_ngrams(last_name))
 							 }
 
 			yield self.collection.insert_one(user)
@@ -142,30 +146,37 @@ class Users(tornado.web.RequestHandler):
 	@cors
 	@tornado.web.asynchronous
 	@tornado.gen.coroutine
-	def delete(self, delete_user_id):
+	def delete(self):
 		# Only superadmin can delete the user, And after deletion all the ownership of all kinds passed to 
 		## superadmin
+		
+		print (self.request.headers)
+		print (self.request.arguments)
+		print (self.request.body)
+		user_id = self.request.arguments.get("user_id")[0].decode("utf-8")
+		action_user_id = self.request.arguments.get("action_user_id")[0].decode("utf-8")
 
+		print (action_user_id)
+		print (user_id)
 		try:
-			action_user_id = self.request.arguments.get("user_id")[0].decode("utf-8")
-			if action_user_id:
+			if not action_user_id:
 				raise Exception("Please send the user_id of person who wants to delete")
 
 			user = yield self.collection.find_one({"user_id": action_user_id}, projection={'_id': False})
 			if user["user_type"] != "superadmin":
 				raise Exception ("Only superadmins can delete users")
 
-
-			result = yield self.collection.find_one({"user_id": delete_user_id}, projection={'_id': False})
+			print (user)
+			result = yield self.collection.find_one({"user_id": user_id}, projection={'_id': False})
 			if result:
-				result = yield self.collection.find_one_and_delete({'user_id': _id})
-				yield self.domain_collection.update_many({"user_id": delete_user_id}, {"$set": {"user_id": action_user_id}}, upsert=False)
-				yield self.concept_collection.update_many({"user_id": delete_user_id}, {"$set": {"user_id": action_user_id}}, upsert=False)
-				yield self.subconconcept_collection.update_many({"user_id": delete_user_id}, {"$set": {"user_id": action_user_id}}, upsert=False)
-				yield self.nanoskill_collection.update_many({"user_id": delete_user_id}, {"$set": {"user_id": action_user_id}}, upsert=False)
-				yield self.question_collection.update_many({"user_id": delete_user_id}, {"$set": {"user_id": action_user_id}}, upsert=False)
-				yield self.permission_collection.delete_many({"user_id": delete_user_id})
-				yield self.permission_collection.update_many({"granter_id": delete_user_id}, {"$set": {"granter_id": action_user_id}}, upsert=False)
+				result = yield self.collection.find_one_and_delete({'user_id': user_id})
+				yield self.domain_collection.update_many({"user_id": user_id}, {"$set": {"user_id": action_user_id}}, upsert=False)
+				yield self.concept_collection.update_many({"user_id": user_id}, {"$set": {"user_id": action_user_id}}, upsert=False)
+				yield self.subconconcept_collection.update_many({"user_id": user_id}, {"$set": {"user_id": action_user_id}}, upsert=False)
+				yield self.nanoskill_collection.update_many({"user_id": user_id}, {"$set": {"user_id": action_user_id}}, upsert=False)
+				yield self.question_collection.update_many({"user_id": user_id}, {"$set": {"user_id": action_user_id}}, upsert=False)
+				yield self.permission_collection.delete_many({"user_id": user_id})
+				yield self.permission_collection.update_many({"granter_id": user_id}, {"$set": {"granter_id": action_user_id}}, upsert=False)
 
 
 
@@ -174,9 +185,10 @@ class Users(tornado.web.RequestHandler):
 			else:
 				raise Exception ("No user Exists")
 
-			message = {"error": False, "success": True, "data": "%s has been deleted"%user["username"]}
+			message = {"error": False, "success": True, "data": user_id}
 		except Exception as e:
 			logger.error(str(e.__str__()))
+			self.set_status(400)
 			message = {"error": True, "success": False, "data": str(e.__str__())}
 
 
@@ -185,29 +197,74 @@ class Users(tornado.web.RequestHandler):
 		self.finish()
 		return
 
+	def make_ngrams(self, word, min_size=2):
+		"""
+		basestring       word: word to split into ngrams
+		int   min_size: minimum size of ngrams
+		"""
+		length = len(word)
+		size_range = range(min_size, max(length, min_size) + 1)
+		return list(set(
+			word[i:i + size]
+			for size in size_range
+			for i in range(0, max(0, length - size) + 1)
+			))
+
+
 	@cors
 	@tornado.web.asynchronous
 	@tornado.gen.coroutine
-	def get(self, user_id=None):
+	def get(self):
 		#user = self.check_user(user_id)
+		print (self.request.arguments)
 		try:
-			if user_id:
-				result = yield self.collection.find({"user_id": user_id}, projection={'_id': False})
+			skip = self.request.arguments.get("skip")[0].decode("utf-8")
+			skip = int(skip)
+		except Exception as e:
+			skip = 0
+
+		try:
+			limit = self.request.arguments.get("limit")[0].decode("utf-8")
+			limit = int(limit)
+		except Exception as e:
+			limit = 0
+		
+		try:
+			search_text = self.request.arguments.get("search_text")[0].decode("utf-8")
+		except Exception as e:
+			search_text = None
+		
+		users_result = []
+		try:
+
+			if search_text:
+				count = yield self.collection.find({"$text":{"$search": search_text}}, projection={"_id": False, "ngrams": False}).count()
+				cursor = self.collection.find({"$text":{"$search": search_text}}, 
+							projection={"_id": False, "ngrams": False}).skip(skip).limit(limit)
+				while (yield cursor.fetch_next):
+					users_result.append(cursor.next_object())
 			else:
-				_result = yield self.collection.find(projection={'_id': False}).to_list(length=100)
-				object_ids = []
-				objects = []
-				for _object in _result:
-					object_ids.append(_object.get("user_id"))
-					objects.append(_object)
-				result = {"users": objects,"user_ids": object_ids}
+				
+				cursor = self.collection.find(projection={'_id': False, "ngrams": False}).skip(skip).limit(limit)
+				count = yield self.collection.find(projection={'_id': False, "ngrams": False}).count()
+				while (yield cursor.fetch_next):
+					users_result.append(cursor.next_object())
+							
 
+			user_ids = []
+			users = []
+			for _object in users_result:
+				print (_object)
+				user_ids.append(_object.get("user_id"))
+				if not _object["user_type"]:
+					_object.update({"user_type": "general"})
+				users.append(_object)
+			result = {"users": users,"user_ids": user_ids}
+			result.update({"user_count": count, "pages":  math.ceil(count/limit)})
 
-			if result:
-				message = {"error": False, "success": True, "message": None, "data": result}
+			pprint (result)
+			message = {"error": False, "success": True, "message": None, "data": result}
 
-			else:
-				raise Exception("No user exist")
 		except Exception as e:
 				logger.error(e)
 				self.set_status(400)
