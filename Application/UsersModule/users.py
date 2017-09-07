@@ -108,7 +108,8 @@ class Users(tornado.web.RequestHandler):
 			##executor.submit(task, datetime.datetime.now())
 		except Exception as e:
 				logger.error(e)
-				self.write({"error": True, "success": False, "token": None, "message": e.__str__()})
+				self.set_status(403)
+				self.write( e.__str__())
 				self.finish()
 				return 
 
