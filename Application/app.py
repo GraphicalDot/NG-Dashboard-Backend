@@ -33,6 +33,7 @@ from Ontology.NanoskillModule.nanoskill import Nanoskills, NanoskillPermissions
 
 from Ontology.SubconceptModule.subconcept import Subconcepts, SubconceptPermissions
 from Ontology.QuestionModule.question import Questions, QuestionPermissions
+from Ontology.QuestionModule.upload_image import UploadImage
 from UsersModule.users import Users
 #from QuestionsModule.questions import Question, Questions, QuestionPermissions
 
@@ -88,6 +89,7 @@ app_urls = [
             (r"/questionpermissions$", QuestionPermissions),
 			(r"/questionpermissions/([a-zA-Z0-9_.-]*$)", QuestionPermissions),
 			(r"/questions/([a-zA-Z0-9_.-]*$)", Questions),
+			(r"/uploadimage$", UploadImage),
 
 
             #(r"/question$", Question),

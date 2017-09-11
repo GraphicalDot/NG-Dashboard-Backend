@@ -24,6 +24,7 @@ subconcept_collection_name = "subconcepts"
 nanoskill_collection_name = "nanoskills"
 question_collection_name = "questions"
 action_collection_name = "actions"
+image_collection_name = "images"
 
 jwt_secret = "HelloOfAkind###"
 app_super_admin = "nctsuperadmin"
