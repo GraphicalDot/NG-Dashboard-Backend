@@ -40,14 +40,19 @@ class UploadImage(tornado.web.RequestHandler):
     @tornado.web.asynchronous
     @tornado.gen.coroutine
     def post(self):
-        data = tornado.escape.json_decode(self.request.body)
-        print (data)
-        print (json.loads(self.request.body.decode()))
-        post_arguments = json.loads(self.request.body)
-        user_id = post_arguments.get("user_id")
-        module_id = post_arguments.get("module_id")
-        image_data = post_arguments.get("image_data")
-        print (image_data)
+
+        print (self.request.files)
+        arg = json.loads(self.request.body)
+        user_id = arg.get("user_id")
+        project_id = arg.get("module_id")
+
+
+        print (user_id)
+        print (module_id)
+        image_data = self.request.files["image_data"][0].get("body")
+        image_name = self.request.files["image_data"][0].get("filename")
+
+        #print (image_data)
         self.write({})
         self.finish()
         return
