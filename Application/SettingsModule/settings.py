@@ -2,8 +2,7 @@
 import motor
 from datetime import datetime
 from pytz import timezone    
-
-
+import os
 app_port = 8000
 mongo_user = "application"
 mongo_pwd = "1234Pacific###"
@@ -30,6 +29,28 @@ jwt_secret = "HelloOfAkind###"
 app_super_admin = "nctsuperadmin"
 app_super_admin_pwd = "1234Pacific###"
 app_super_admin_user_id = "nctsuperadmin###"
+
+
+
+
+os.environ['S3_USE_SIGV4'] = 'True'
+bucket_name = "newunlearnimages"
+access_key_id = "AKIAJHUY754DHIT5ZNQQ"
+secret_access_key = "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"
+host= "s3.ap-south-1.amazonaws.com"
+
+import boto3
+from botocore.client import Config
+
+s3connection = boto3.client(
+    's3',
+    aws_access_key_id=access_key_id,
+    aws_secret_access_key=secret_access_key,
+	config=Config(signature_version='s3v4'), 
+	region_name="ap-south-1"
+)
+
+#s3connection = boto.connect_s3(access_key_id, secret_access_key, host=host)
 
 
 ##change this if you want all get requests for list to return more than 10 results
