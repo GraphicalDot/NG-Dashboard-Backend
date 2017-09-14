@@ -40,6 +40,30 @@ class Permissions(object):
 
     @staticmethod
     @coroutine
+    def user_module_permission(module, user, permission_collection):
+        #for fetching permission for user_id for module_id
+
+        if user["user_type"] == "superadmin":
+            return {'add_child': True, 'delete': True, 'edit': True, 'get': True}
+
+        ##To check whether the user exists in permission collection
+        user_in_permission = yield permission_collection.find_one({"user_id":   user["user_id"], "module_id": module["module_id"]}, projection={"_id": False})
+
+        ## Is a user is not in permission collection, then there are two possibilities, One is 
+        ## A user is admin, thatmeans he must have get permission on every modue
+        ## He is a general use which means every permission is false.
+        if not user_in_permission:
+                if user["user_type"] == "admin":
+                    return {'add_child': False, 'delete': False, 'edit': False, 'get': True}
+                else:
+                    return {'add_child': False, 'delete': False, 'edit': False, 'get': False}
+        else:
+                return user_in_permission["permission"]
+        
+        return 
+
+    @staticmethod
+    @coroutine
     def get_permissions_modules(skip, limit, module, permission_collection, user_collection):
         ## Now when getting the permissions for module, superadmin wil not be present and also the admins
         ## who dont have any delete, edit and add_child permissions on it, because by default admin gets 
@@ -90,41 +114,23 @@ class Permissions(object):
 
     @staticmethod
     @coroutine
-    def get_permissions_user(skip, limit, user, module_type, module_collection, permission_collection):
-        
-        print ("Get Permission user")
-        modules = []
-        cursor =  permission_collection.find({"user_id": user["user_id"], "module_type": module_type}, projection={"_id": False}).skip(skip).limit(limit)
+    def get_permissions_module(skip, limit, user, module, permission_collection, user_collection):
+        ##If you want ot get module_permission of all the users in one go
+
+        users = []
+        users = yield user_collection.find(projection={"_id": False, "username": True, "user_id": True})
         while (yield cursor.fetch_next):
-            modules.append(cursor.next_object())
+            users.append(cursor.next_object())
 
-        if user["user_type"] == "admin":
-            modules_in_permissions = [_object["module_id"] for _object in modules]
-            print ("\n")
-            print (modules_in_permissions)
-            print ("\n")
+        users_with_permissions = []
+        for user in users:
+            permission = yield Permissions.user_module_permission(module, user, permission_collection)
+            user.update({"permission": permission})
+            users_with_permissions.append(user)
 
-            all_modules = []
+        return users_with_permissions
 
-            print (module_collection)
-            cursor = module_collection.find({"module_type": module_type}, projection={"_id": False}).skip(skip).limit(limit)
-            while (yield cursor.fetch_next):
-                all_modules.append(cursor.next_object())
 
-            for module in all_modules:
-                if module["module_id"] not in modules_in_permissions:
-                    permission_object = {"get": True, "edit": False, "add_child": False, "delete": False}
-                    modules.append({"user_id": user["user_id"], 
-											"module_id": module["module_id"],
-                                            "user_type": user["user_type"], 
-											"module_name": module["module_name"],
-											"module_type": module["module_type"], 
-											"parent_id": module["parent_id"],
-                                            "username": user["username"],
-											"granter_id": None, 
-											"permission": permission_object}
-                                )
-        return modules
 
 
     @staticmethod

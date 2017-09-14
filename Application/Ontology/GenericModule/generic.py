@@ -50,41 +50,132 @@ class GenericPermissions(tornado.web.RequestHandler):
 		self.child_collection_name = None
 		self.permission_collection = db[permission_collection_name]
 		self.action_collection = db[action_collection_name]
+
 		
 	@cors
 	@tornado.web.asynchronous
 	@tornado.gen.coroutine
-	def get(self, module_id=None):
-
-		pprint ("I received the get request")
+	def post(self):
 		try:
 			user_id = self.request.arguments.get("user_id")[0].decode("utf-8")
-		except Exception : 
-			user_id = None
-		
-		modules = []
-		try:
-			skip = self.request.arguments.get("skip")[0].decode("utf-8")
-			limit = self.request.arguments.get("limit")[0].decode("utf-8")
-		except Exception:
-			skip = 0
-			limit = 15
-		user = yield self.user_collection.find_one({"user_id": user_id})
-		
-		if module_id:
+			user = yield self.user_collection.find_one({"user_id": user_id})
+
+			target_user_id = self.request.arguments.get("target_user_id")[0].decode("utf-8")
+			target_user = yield self.user_collection.find_one({"user_id": target_user_id})
+			
+			if not user or not target_user:
+					raise Exception("No user exists")
+
+
+			module_id = self.request.arguments.get("module_id")[0].decode("utf-8")
 			module = yield self.module_collection.find_one({"module_id": module_id})
-			result = yield Permissions.get_permissions_modules(skip, limit, module, self.permission_collection, self.user_collection)
-		else:
-			result= yield Permissions.get_permissions_user(skip, limit, user, self.module_type, self.module_collection, self.permission_collection)
+			if module:
+					raise Exception("No module exists")
+
+
+			permission = self.request.arguments.get("permission")[0].decode("utf-8")
+
+			##First check if the user_id 
+
+
+
+		except Exception as e:
+				logger.error(e)
+				self.set_status(400)
+				self.write(e.__str__())
+				self.finish()
+				return 
+
+		##This line has to be added, somehow while inserting nanoskill into the mongo, nanoskill itself got a new _id key
+		##which is not serializable
+		##TODO : implement JWT tokens
+		self.write({"error": False, "success": True, "data": result})
+		self.finish()
+		return 
+						
+
+
+
+
+
+	@cors
+	@tornado.web.asynchronous
+	@tornado.gen.coroutine
+	def get(self):
+
+		"""
+		For permissions of a logged in user on every module can be obtained from the get request of egenric class.
+		Now a different need is, A superadmin or any other user could pass on permission to other user.
+		For this, A module_id will be given and all the permissions for several user must be provided int he response. 
+
+		So for example, 
+			case 1: superadmin
+					supeadmin have all the permissions, 
+					so ehen clicking on the +permission , a user list will be populated, superadmin will select a 
+					user and with this user_is and module_id a requst will be made onto this class.
+
+					Now, A user will have permissions for this module, which will be generated in form of checkboxes intot he 
+					front end, In case a superadmin want to change a specific permission, He will click on the checkbox
+					A request will be made onto the put request
+
+
+			case 2: A general user 
+					Only the module on which a user will have get permission will be shown to the user.
+					same process of user selection and module selection follows.
+
+					Same ui will be generated after a response from this api, Except for the fact that
+					the permission on hich the user id doesnt have Tre will be freezed, so user_id cnnot change these
+					permisison for target user.
+
+		"""
+		try:
+			user_id = self.request.arguments.get("user_id")[0].decode("utf-8")
+			user = yield self.user_collection.find_one({"user_id": user_id})
+			if not user:
+					raise Exception("No user exists")
+					
+			target_user_id = self.request.arguments.get("user_id")[0].decode("utf-8")
+			target_user = yield self.user_collection.find_one({"user_id": user_id})
+			if not target_user:
+					raise Exception("No target user exists")
 		
-		
-		pprint (result)
+			try:
+				skip = self.request.arguments.get("skip")[0].decode("utf-8")
+				limit = self.request.arguments.get("limit")[0].decode("utf-8")
+			except Exception:
+				skip = 0
+				limit = 15	
+
+			module_id = self.request.arguments.get("module_id")[0].decode("utf-8")
+			
+			if module_id:
+				##Only the permissions of this module_id must be given in the response.
+				
+				pprint ("This is the module_id %s"%module_id)
+				module = yield self.module_collection.find_one({"module_id": module_id})
+				if not module:
+					raise Exception("Module doesnt exists")
+				else:
+					result = yield Permissions.user_module_permission(module, target_user, self.permission_collection)
+			else:
+				## All the permission of the target module for all the users  has to be given fot his module_type,
+				result = yield Permissions.get_permissions_module(skip, limit, user, module, permission_collection, user_collection)
+
+		except Exception as e:
+				logger.error(e)
+				self.set_status(400)
+				self.write(e.__str__())
+				self.finish()
+				return 
+
+		##This line has to be added, somehow while inserting nanoskill into the mongo, nanoskill itself got a new _id key
+		##which is not serializable
+		##TODO : implement JWT tokens
 		self.write({"error": False, "success": True, "data": result})
 		self.finish()
 		return 
 
-
-
+			
 
 
 
@@ -563,6 +654,8 @@ class Generic(tornado.web.RequestHandler):
 		pprint ("skip == <<%s>> and limit = <<%s>>"%(skip, limit))
 		message = {"error": True, "success": False, "message": "Success", "data": {"modules": _modules, "module_ids": module_ids, 
 						"module_count": module_count, "pages": math.ceil(module_count/limit)}}
+
+		pprint (message)
 		self.write(message)
 		self.finish()
 		return

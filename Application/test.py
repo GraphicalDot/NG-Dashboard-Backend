@@ -166,7 +166,8 @@ description = fake.text()
 module_name = fake.name()
 user_id = users["user_one"]["user_id"]
 r3 = requests.post(DOMAIN_URL, data=json.dumps({"module_name": module_name, "description": description, "user_id": user_id}))
-if not domains.find_one({"description": description, "user_id": user_id}, projection={"_id": False}) and not r.json()["success"]:
+print (r3.json())
+if not domains.find_one({"description": description, "user_id": user_id}, projection={"_id": False}):
 		_str = "Creation of domain by user_one failed".ljust(200) + "****Test Passed <<3>>***" + "\n"
 		cprint(_str, "green")
 else:
@@ -304,7 +305,7 @@ else:
 
 
 
-
+''' 
 logger.info("Test")
 r = requests.get("%s/%s"%(DOMAIN_PERMISSIONSURL, domains_object["user_two"]["module_id"]))
 cprint ("Now the domain created by user_two has been creation_approval by superadmin", "green")
@@ -317,7 +318,6 @@ else:
 		cprint(_str, "red")
 logger.info("Test")
 
-
 r = requests.get(DOMAIN_PERMISSIONSURL, params={"user_id": users["admin"]["user_id"]})
 cprint ("get permissions for the admin for module_type domain", "green")
 cprint ("As till now, nobody provided admin any permissions, he will have get permission on every domain", "green")
@@ -328,6 +328,7 @@ else:
 		_str = "Get request by user_two failed, as he didnt receive emppty list of domains".ljust(200) + "****Test Failed***" + "\n"
 		cprint(_str, "red")
 
+'''
 
 
 

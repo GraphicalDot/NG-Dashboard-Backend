@@ -234,7 +234,15 @@ class Users(tornado.web.RequestHandler):
 			search_text = self.request.arguments.get("search_text")[0].decode("utf-8")
 		except Exception as e:
 			search_text = None
+
 		
+		try:
+			user_id = self.request.arguments.get("user_id")[0].decode("utf-8")
+		except Exception as e:
+			raise Exception("User id required")
+		
+
+
 		users_result = []
 		try:
 
@@ -256,10 +264,12 @@ class Users(tornado.web.RequestHandler):
 			users = []
 			for _object in users_result:
 				print (_object)
-				user_ids.append(_object.get("user_id"))
-				if not _object["user_type"]:
-					_object.update({"user_type": "general"})
-				users.append(_object)
+				
+				if not _object.get("user_id") == user_id:
+						user_ids.append(_object.get("user_id"))
+						if not _object["user_type"]:
+							_object.update({"user_type": "general"})
+						users.append(_object)
 			result = {"users": users,"user_ids": user_ids}
 			result.update({"user_count": count, "pages":  math.ceil(count/limit)})
 
