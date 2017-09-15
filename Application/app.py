@@ -66,22 +66,22 @@ app_urls = [
 
 
             (r"/concepts$", Concepts),
-			(r"/concepts/(\d+$)", Concepts),
-			(r"/conceptpermissions/(\d+$)", ConceptPermissions),
+			(r"/conceptpermissions$", ConceptPermissions),
+			(r"/conceptpermissions/([a-zA-Z0-9_.-]*$)", ConceptPermissions),
 			(r"/concepts/([a-zA-Z0-9_.-]*$)", Concepts),
             			
 
 
             (r"/subconcepts$", Subconcepts),
-			(r"/subconcepts/(\d+$)", Subconcepts),
-			(r"/subconceptpermissions/(\d+$)", SubconceptPermissions),
+			(r"/subconceptpermissions$", SubconceptPermissions),
+			(r"/subconceptpermissions/([a-zA-Z0-9_.-]*$)", SubconceptPermissions),
 			(r"/concepts/([a-zA-Z0-9_.-]*$)", Subconcepts),
 
 
 
             (r"/nanoskills$", Nanoskills),
-			(r"/nanoskills/(\d+$)", Nanoskills),
-			(r"/nanoskillpermissions/(\d+$)", NanoskillPermissions),
+			(r"/nanoskillpermissions$", NanoskillPermissions),
+			(r"/nanoskillpermissions/([a-zA-Z0-9_.-]*$)", NanoskillPermissions),
 			(r"/nanoskills/([a-zA-Z0-9_.-]*$)", Nanoskills),
 
 

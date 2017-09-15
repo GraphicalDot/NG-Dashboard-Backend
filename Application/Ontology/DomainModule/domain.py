@@ -16,7 +16,6 @@ from Ontology.GenericModule.generic  import GenericPermissions, Generic
 ## and gen.coroutine is a perfect to resolve a future object uyntillit is resolved
 
 import codecs
-
 from GeneralModule.cors import cors
 reader = codecs.getreader("utf-8")
 

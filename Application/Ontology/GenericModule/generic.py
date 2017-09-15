@@ -197,6 +197,7 @@ class GenericPermissions(tornado.web.RequestHandler):
 		##This line has to be added, somehow while inserting nanoskill into the mongo, nanoskill itself got a new _id key
 		##which is not serializable
 		##TODO : implement JWT tokens
+		pprint (result)
 		self.write({"error": False, "success": True, "data": result})
 		self.finish()
 		return 
