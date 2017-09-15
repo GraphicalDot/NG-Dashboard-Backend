@@ -56,26 +56,52 @@ class GenericPermissions(tornado.web.RequestHandler):
 	@tornado.web.asynchronous
 	@tornado.gen.coroutine
 	def post(self):
+		post_arguments = json.loads(self.request.body.decode("utf-8"))
+
 		try:
-			user_id = self.request.arguments.get("user_id")[0].decode("utf-8")
+			user_id = post_arguments.get("user_id") 
 			user = yield self.user_collection.find_one({"user_id": user_id})
 
-			target_user_id = self.request.arguments.get("target_user_id")[0].decode("utf-8")
+			target_user_id = post_arguments.get("target_user_id") 
 			target_user = yield self.user_collection.find_one({"user_id": target_user_id})
 			
 			if not user or not target_user:
 					raise Exception("No user exists")
 
 
-			module_id = self.request.arguments.get("module_id")[0].decode("utf-8")
+			parent_id = post_arguments.get("parent_id") 
+			##Because domain has no parent
+			if parent_id == None and self.module_type != "domain":
+				raise Exception("Please provide the parent_id")
+
+			module_id = post_arguments.get("module_id") 
 			module = yield self.module_collection.find_one({"module_id": module_id})
-			if module:
+			if not module:
 					raise Exception("No module exists")
 
 
-			permission = self.request.arguments.get("permission")[0].decode("utf-8")
+			permission = post_arguments.get("permission") 
+			pprint(permission)
+			
+			assert isinstance(permission, dict), 'permissions shall of dict  type!'
 
-			##First check if the user_id 
+
+			if user["user_type"] == "superadmin":
+				pprint ("Adding permission by superadmin")
+				yield Permissions.set_permission_from_obj(target_user, module, permission, parent_id, 
+									user, self.permission_collection)
+
+			else:
+				##First check if the user_id has sufficient permission on the module or not,
+				pprint ("Adding permission by user_type who is not superadmin")
+				for rest_parameter in ["get", "delete", "edit", "add_child"]:
+					if permission[rest_parameter]:
+						result = yield Permissions.get_permission_rest_parameter(user, module, rest_parameter, self.permission_collection)
+						if not result:
+							raise Exception("Insufficient permissions to provide %s permission"%rest_parameter)
+						else:
+							print ("user_type <<%s>> with user_id<<%s>> have %s on %s"%(granter["user_type"], granter["user_id"], rest_parameter, module["module_id"]))
+							yield Permissions.set_permission_rest_paramter(target_user, module, parent, user, rest_parameter, self.permission_collection)
 
 
 
@@ -87,9 +113,9 @@ class GenericPermissions(tornado.web.RequestHandler):
 				return 
 
 		##This line has to be added, somehow while inserting nanoskill into the mongo, nanoskill itself got a new _id key
-		##which is not serializable
+		##which is not serializable				assert isinstance(permission, dict), 'permissions shall of dict  type!'
 		##TODO : implement JWT tokens
-		self.write({"error": False, "success": True, "data": result})
+		self.write({"error": False, "success": True, "data": permission})
 		self.finish()
 		return 
 						
@@ -184,7 +210,7 @@ class Generic(tornado.web.RequestHandler):
 
 	def initialize(self):
 		self.db = self.settings["db"]
-		self.parent_collection = None
+		self.parent_collection = None		
 		self.parent_name = None
 		self.module_collection = None
 		self.user_collection = None

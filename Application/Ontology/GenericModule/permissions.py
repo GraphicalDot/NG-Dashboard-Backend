@@ -204,7 +204,7 @@ class Permissions(object):
 
     @staticmethod
     @coroutine
-    def set_permission_rest_paramter(user, module, parent, granter, rest_parameter, permission_collection):
+    def set_permission_rest_paramter(user, module, parent_id, granter, rest_parameter, permission_collection):
         try:
                 permissions = yield permission_collection.find_one({"user_id": user["user_id"], 
 											"module_id": module["module_id"],
@@ -215,9 +215,6 @@ class Permissions(object):
             print (e)
         print (permissions)
         print (rest_parameter)
-        if not parent:
-            parent_id = None
-
         if not permissions:
                 per = {"get": False, "delete": False, "add_child": False, "edit": False}
                 per.update({rest_parameter: True})
@@ -240,7 +237,7 @@ class Permissions(object):
 											"module_id": module["module_id"],
                                             "module_name": module["module_name"],
                                             "module_type": module["module_type"], 
-                                            "parent": parent,
+                                            "parent_id": parent_id,
 											"granter_id": granter["user_id"]}, 
 											{"$set": {"permission.%s"%rest_parameter: True}}, 
                                             upsert=False)
