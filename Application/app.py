@@ -29,6 +29,8 @@ from Ontology.DomainModule.domain import Domains
 from Ontology.DomainModule.domain import DomainPermissions
 from Ontology.ConceptModule.concept import Concepts, ConceptPermissions
 from Ontology.NanoskillModule.nanoskill import Nanoskills, NanoskillPermissions
+from Templates.templates import Templates
+
 
 
 from Ontology.SubconceptModule.subconcept import Subconcepts, SubconceptPermissions
@@ -86,11 +88,13 @@ app_urls = [
 
 
             (r"/questions$", Questions),
+			(r"/questions/([a-zA-Z0-9_.-]*$)", Questions),
             (r"/questionpermissions$", QuestionPermissions),
 			(r"/questionpermissions/([a-zA-Z0-9_.-]*$)", QuestionPermissions),
-			(r"/questions/([a-zA-Z0-9_.-]*$)", Questions),
 			(r"/uploadimage$", UploadImage),
 
+            (r"/templates$", Templates),
+			(r"/templates/([a-zA-Z0-9_.-]*$)", Templates),
 
             #(r"/question$", Question),
             #(r"/questions$", Questions),

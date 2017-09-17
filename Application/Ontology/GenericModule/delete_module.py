@@ -15,6 +15,23 @@ from AuthenticationModule.authentication import auth
 
 
 class DeleteModule(object):
+	
+	@staticmethod
+	@coroutine
+	def o(module, child_collection_name):
+		module_id = module["module_id"]
+		children = db["child_collection_name"].find({"parent_id": module_id}, projection={"_id": False, "ngrams": False})
+		for child in children:
+			if child["child_collection_name"]:
+				children = o(child, module["child_collection_name"])
+				child.update({"childen": children})
+		return children
+
+		for module in db["domain_collection_name"].find(projection={"_id": False, "module_name": True, "module_id": True}):
+			module
+
+
+
 	@staticmethod
 	@coroutine
 	def delete_children(db, children, child_collection_name):
