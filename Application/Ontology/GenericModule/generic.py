@@ -360,7 +360,7 @@ class Generic(tornado.web.RequestHandler):
 							 "module_id": module_id, "utc_epoch": time.time(), "indian_time": indian_time(), "username": user["username"],
 							 "user_id": user_id, "status": True, "deletion_approval": False, "creation_approval": creation_approval, "parent_name": parent_module["module_name"],
 							  "module_type": self.module_type, "user_type": user["user_type"], "child_collection_name": self.child_collection_name, "children": [],
-							  "ngrams": " ".join(self.make_ngrams(module_name) + self.make_ngrams(question_text)  + self.make_ngrams(description) + parent_ngrams), 
+							  "ngrams": " ".join(self.make_ngrams(module_name) + self.make_ngrams(question_text)  + parent_ngrams), 
 							  "question_text": question_text, 
 							  "options": options, 
 							  "question_type": question_type,
@@ -375,7 +375,7 @@ class Generic(tornado.web.RequestHandler):
 							 "module_id": module_id, "utc_epoch": time.time(), "indian_time": indian_time(), "username": user["username"],
 							 "user_id": user_id, "status": True, "deletion_approval": False, "creation_approval": creation_approval, 
 							  "module_type": self.module_type, "user_type": user["user_type"], "child_collection_name": self.child_collection_name, "children": [],
-							  "ngrams": " ".join(self.make_ngrams(module_name) + self.make_ngrams(description)) }
+							  "ngrams": " ".join(self.make_ngrams(module_name)) }
 			
 			
 			
