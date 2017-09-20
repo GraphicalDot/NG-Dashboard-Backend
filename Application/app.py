@@ -25,12 +25,13 @@ from LoginModule.login import Login
 from SignupModule.signup import Signup
 from SettingsModule.settings import mongo_db, nanoskill_collection_name, domain_collection_name,user_collection_name,\
                                             question_collection_name, concept_collection_name, subconcept_collection_name, \
-                                            template_collection_name
+                                            template_collection_name, variable_collection_name
 from Ontology.DomainModule.domain import Domains
 from Ontology.DomainModule.domain import DomainPermissions
 from Ontology.ConceptModule.concept import Concepts, ConceptPermissions
 from Ontology.NanoskillModule.nanoskill import Nanoskills, NanoskillPermissions
 from Templates.templates import Templates, TemplateSkeleton
+from VariableModule.variables import Variables
 
 
 
@@ -96,8 +97,11 @@ app_urls = [
 
             (r"/templates$", Templates),
 			(r"/templates/([a-zA-Z0-9_.-]*$)", Templates),
-
             (r"/templateskeleton$", TemplateSkeleton),
+
+            (r"/variables$", Variables),
+			(r"/variables/([a-zA-Z0-9_.-]*$)", Variables),
+
 
             #(r"/question$", Question),
             #(r"/questions$", Questions),
@@ -157,6 +161,12 @@ def make_indexes():
     except Exception as e:
         print (e)
 
+
+    print ("Making Variable Collection Indexes")
+    try:
+        mongo_db[variable_collection_name].create_index([("ngrams", motor.pymongo.TEXT)])   
+    except Exception as e:
+        print (e)
 
 
 if __name__ == "__main__":
