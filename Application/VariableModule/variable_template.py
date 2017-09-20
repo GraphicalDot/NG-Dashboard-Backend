@@ -1,7 +1,7 @@
 import tornado.options
 import tornado.web
 from SettingsModule.settings import user_collection_name, domain_collection_name, template_collection_name,\
-					indian_time, variable_collection_name
+					indian_time, variable_collection_name, variable_template_collection_name, variable_template_bucket
 from LoggingModule.logging import logger
 from tornado.ioloop import IOLoop
 import hashlib
@@ -32,11 +32,12 @@ def make_ngrams(word, min_size=2):
 			))
 
 
-class Variables(tornado.web.RequestHandler):
+class VariableTemplates(tornado.web.RequestHandler):
 	#TODO: Need to implement users whoc can make variables
 	def initialize(self):
 			self.db = self.settings["db"]
 			self.variable_collection = self.db[variable_collection_name]
+			self.variable_template_collection = self.db[variable_template_collection_name]
 			self.user_collection = self.db[user_collection_name]
 
 	@cors
@@ -140,33 +141,36 @@ class Variables(tornado.web.RequestHandler):
 	@tornado.gen.coroutine
 	def  post(self):
 		"""
-		Used to create a new user or update and existing one
-		Request Param:
-			user_type: admin, accessor, evaluator, superadmin
-			username: 
-			password: 
-			newpassword:
+
+		he variable collection will have all the variables in it, With every variable there will
+		be a data_type attached to it. While creating a varaible template, The user either must be 
+		a superadmin or must have variable_template True
+
+		A user which creating a Variable Template can select variables from all the templates, and then
+		Edit their values,
+		This variable template once created can be attached to Main template which will then be served 
+		to students.
 		"""
 
 		print (self.request.body)
 		post_arguments = json.loads(self.request.body.decode("utf-8"))
 		print (post_arguments)
-		variable_name = post_arguments.get("variable_name")
+		variable_template_name = post_arguments.get("variable_template_name")
 		description = post_arguments.get("description")
 		user_id = post_arguments.get("user_id")
-		identifier = post_arguments.get("identifier")
-		data_type = post_arguments.get("data_type")
-		default_value = post_arguments.get("default_value")
+		data_array = post_arguments.get("data_array")
 		
 		#user = yield db[credentials].find_one({'user_type': user_type, "username": username, "password": password})
 		
 		try:
+			user = yield self.user_collection.find_one({"user_id": user_id})
 
-			if not variable_name or not identifier:
-				raise Exception("Variable Name or identifier is missing")
+			if user["user_type"] != "superadmin":
+				if not user["variable_template"]:
+					raise Exception ("You do not have sufficient permissions to create variable template")
 
-			if not default_value:
-				raise Exception("Default value for this variable must be provided in order to create this variable")
+			if not variable_template_name:
+				raise Exception("Variable Template Name is missing")
 
 			if not identifier.startswith("#"):
 				raise Exception("Identifier must starts with #")
@@ -200,3 +204,53 @@ class Variables(tornado.web.RequestHandler):
 		return 
 
 
+	@cors
+	@tornado.gen.coroutine
+	@staticmethod
+	def upload_image(self)
+        user_id = self.request.arguments.get("user_id")[0].decode("utf-8")
+        variable_template_name = self.request.arguments.get("variable_template_name")[0].decode("utf-8")
+        variable_name = self.request.arguments.get("variable_name")[0].decode("utf-8")
+
+
+        user = yield self.users.find_one({"user_id": user_id}, projection={"_id": False, "ngrams": False})
+        parent = yield self.parent_collection.find_one({"module_id": parent_id}, projection={"_id": False, "ngrams": False})
+
+
+        if not user or not parent:
+            raise Exception("user_id and parent_id must be provided")
+
+        arg = self.request.files["image_data"][0]
+
+
+		images = self.request.files["image_data"]
+
+		s3_urls = []
+		for image in images:
+        	image_data = image.get("body")
+        	image_name = image.get("filename")
+        	image_content_type = image.get("content_type")
+
+
+
+		def push_to_s3(image_data):
+        	bytesIO = BytesIO()
+        	bytesIO.write(image_data)
+        	bytesIO.seek(0)
+        
+        	__name = "%s/%s/%s"%(parent["module_name"], user["username"], image_name)
+        	name = __name.lower().replace(" ", "").replace("nanoskill-", "")
+
+        	s3connection.put_object(Body=bytesIO, Bucket=bucket_name, Key=name, 
+								ContentType=image_content_type, Metadata= {"user_id": user_id, 
+								"variable_name": variable_name,
+								 "variable_template_name": variable_template_name})
+
+        	url = s3connection.generate_presigned_url('get_object', 
+									Params = {'Bucket': bucket_name, 'Key': name}, ExpiresIn = 10)
+        	return url
+        ##TODO: https://gist.github.com/kn9ts/4b5a9942b6afbfc2534f2f14c87b9b54
+        ##TODO: https://github.com/jmenga/requests-aws-sign
+        self.write({"link": url})
+        self.finish()
+        return

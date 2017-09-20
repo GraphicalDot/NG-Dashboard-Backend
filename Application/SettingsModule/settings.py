@@ -26,6 +26,8 @@ action_collection_name = "actions"
 image_collection_name = "images"
 template_collection_name = "templates"
 variable_collection_name = "variables"
+variable_template_collection_name = "variable_templates"
+
 
 jwt_secret = "HelloOfAkind###"
 app_super_admin = "nctsuperadmin"
@@ -37,6 +39,7 @@ app_super_admin_user_id = "nctsuperadmin###"
 
 os.environ['S3_USE_SIGV4'] = 'True'
 bucket_name = "newunlearnimages"
+variable_template_bucket = "variabletemplate"
 access_key_id = "AKIAJHUY754DHIT5ZNQQ"
 secret_access_key = "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"
 host= "s3.ap-south-1.amazonaws.com"
