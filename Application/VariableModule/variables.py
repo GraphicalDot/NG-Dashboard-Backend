@@ -155,6 +155,7 @@ class Variables(tornado.web.RequestHandler):
 		description = post_arguments.get("description")
 		user_id = post_arguments.get("user_id")
 		identifier = post_arguments.get("identifier")
+		data_type = post_arguments.get("data_type")
 		
 		#user = yield db[credentials].find_one({'user_type': user_type, "username": username, "password": password})
 		
@@ -176,7 +177,7 @@ class Variables(tornado.web.RequestHandler):
 
 			variable_object = {"variable_id": _id, "variable_name": variable_name,  "utc_epoch": time.time(), "description": description,
 									"indian_time": indian_time(), "ngrams": " ".join(make_ngrams(variable_name)),
-									"user_id": user_id, "identifier": identifier }
+									"user_id": user_id, "identifier": identifier, "data_type": data_type }
 			yield self.variable_collection.insert_one(variable_object)
 		
 		except Exception as e:
