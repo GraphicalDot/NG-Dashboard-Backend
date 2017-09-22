@@ -80,7 +80,7 @@ class Variables(tornado.web.RequestHandler):
 							"$text":{"$search": search_text}}, projection={"_id": False, "ngrams": False}).count()
 				
 				pprint ("This is the template count %s"%variable_count)
-				cursor = self.template_collection.find({
+				cursor = self.variable_collection.find({
 							"$text":{"$search": search_text}}, projection={"_id": False, "ngrams": False}).skip(skip).limit(limit)
 				while (yield cursor.fetch_next):
 					variables.append(cursor.next_object())
@@ -93,10 +93,12 @@ class Variables(tornado.web.RequestHandler):
 
 		variable_ids = []
 		for module in variables:
+			module.pop("user_id")
+			module.pop("utc_epoch")
 			variable_ids.append(module.get("variable_id"))
 
 		message = {"error": True, "success": False, "message": "Success", "data": {"variables": variables, "variable_ids": variable_ids, 
-						"variable_count": template_count, "pages": math.ceil(variable_count/limit)}}
+						"variable_count": variable_count, "pages": math.ceil(variable_count/limit)}}
 
 		pprint (message)
 		self.write(message)
@@ -131,7 +133,9 @@ class Variables(tornado.web.RequestHandler):
 			return 
 
 
-		self.write({"data": variable_id})
+		message = {"data": variable_id}
+		print (message)
+		self.write(message)
 		self.finish()
 		return
 
@@ -154,19 +158,24 @@ class Variables(tornado.web.RequestHandler):
 		variable_name = post_arguments.get("variable_name")
 		description = post_arguments.get("description")
 		user_id = post_arguments.get("user_id")
-		identifier = post_arguments.get("identifier")
 		data_type = post_arguments.get("data_type")
-		default_value = post_arguments.get("default_value")
-		
+		identifier = post_arguments.get("identifier")
+		categories = post_arguments.get("categories")
 		#user = yield db[credentials].find_one({'user_type': user_type, "username": username, "password": password})
 		
 		try:
+			user = yield self.user_collection.find_one({"user_id": user_id}, projection={"_id": False, "username": True, "user_type": True})
+			if not user:
+				raise Exception("This user doesnt exists")
+			
+			
+			if not user["user_type"] == "superadmin":
+				if not user["variable"]:
+					raise Exception("You dont have sufficient permissions to create variables")
+				
 
 			if not variable_name or not identifier:
 				raise Exception("Variable Name or identifier is missing")
-
-			if not default_value:
-				raise Exception("Default value for this variable must be provided in order to create this variable")
 
 			if not identifier.startswith("#"):
 				raise Exception("Identifier must starts with #")
@@ -179,9 +188,16 @@ class Variables(tornado.web.RequestHandler):
 
 			_id = str(uuid.uuid4())
 
+			if user["user_type"] == "superadmin":
+				creation_approval = True
+			else:
+				creation_approval = False
+
 			variable_object = {"variable_id": _id, "variable_name": variable_name,  "utc_epoch": time.time(), "description": description,
 									"indian_time": indian_time(), "ngrams": " ".join(make_ngrams(variable_name)),
-									"user_id": user_id, "identifier": identifier, "data_type": data_type }
+									"user_id": user_id, "identifier": identifier, "data_type": data_type, "categories": categories, 
+									"creation_approval": False, "username": user["username"]}
+
 			yield self.variable_collection.insert_one(variable_object)
 		
 		except Exception as e:
@@ -193,6 +209,8 @@ class Variables(tornado.web.RequestHandler):
 				return 
 
 		variable_object.pop("_id")
+		variable_object.pop("user_id")
+		variable_object.pop("utc_epoch")
 		message = {"error": False, "success": True, "data": {"variable": variable_object, "variable_id": variable_object["variable_id"]}}
 		pprint (message)
 		self.write(message)

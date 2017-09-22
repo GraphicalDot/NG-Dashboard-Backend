@@ -37,7 +37,7 @@ class VariableTemplates(tornado.web.RequestHandler):
 	def initialize(self):
 			self.db = self.settings["db"]
 			self.variable_collection = self.db[variable_collection_name]
-			self.variable_template_collection = self.db[variable_template_collection_name]
+			self.collection = self.db[variable_template_collection_name]
 			self.user_collection = self.db[user_collection_name]
 
 	@cors
@@ -64,9 +64,9 @@ class VariableTemplates(tornado.web.RequestHandler):
 			limit = 15
 		
 		try:
-			variable_id = self.request.arguments.get("variable_id")[0].decode("utf-8")
+			variabletemplate_id = self.request.arguments.get("variabletemplate_id")[0].decode("utf-8")
 		except Exception:
-			variable_id= None
+			variabletemplate_id= None
 		try:
 			search_text = self.request.arguments.get("search_text")[0].decode("utf-8")
 		except Exception:
@@ -74,32 +74,37 @@ class VariableTemplates(tornado.web.RequestHandler):
 
 		user = yield self.user_collection.find_one({"user_id": user_id})
 
-		
-		variables = []
-		if search_text:
-				variable_count = yield self.variable_collection.find({ 
+		if not variabletemplate_id:
+			variabletemplates = []
+			if search_text:
+				variabletemplate_count = yield self.collection.find({ 
 							"$text":{"$search": search_text}}, projection={"_id": False, "ngrams": False}).count()
 				
-				pprint ("This is the template count %s"%variable_count)
-				cursor = self.template_collection.find({
-							"$text":{"$search": search_text}}, projection={"_id": False, "ngrams": False}).skip(skip).limit(limit)
+				pprint ("This is the template count %s"%variabletemplate_count)
+				cursor = self.collection.find({
+							"$text":{"$search": search_text}}, projection={"_id": False, "ngrams": False, "variable_array": False}).skip(skip).limit(limit)
 				while (yield cursor.fetch_next):
-					variables.append(cursor.next_object())
+					variabletemplates.append(cursor.next_object())
 			
-		else:
-				variable_count = yield self.variable_collection.find(projection={"_id": False, "ngrams": False}).count()
-				cursor = self.variable_collection.find(projection={"_id": False, "ngrams": False}).skip(skip).limit(limit)
+			else:
+				variabletemplate_count = yield self.collection.find(projection={"_id": False, "ngrams": False}).count()
+				cursor = self.collection.find(projection={"_id": False, "variable_array": False, "ngrams": False}).skip(skip).limit(limit)
 				while (yield cursor.fetch_next):
-					variables.append(cursor.next_object())
+					variabletemplates.append(cursor.next_object())
 
-		variable_ids = []
-		for module in variables:
-			variable_ids.append(module.get("variable_id"))
+			variabletemplate_ids = []
+			for module in variabletemplates:
+					variabletemplate_ids.append(module.get("variabletemplate_id"))
 
-		message = {"error": True, "success": False, "message": "Success", "data": {"variables": variables, "variable_ids": variable_ids, 
-						"variable_count": template_count, "pages": math.ceil(variable_count/limit)}}
+			message = {"error": True, "success": False, "message": "Success", "data": {"variabletemplates": variabletemplates, "variabletemplate_ids": variabletemplate_ids, 
+						"variabletemplate_count": variabletemplate_count, "pages": math.ceil(variabletemplate_count/limit)}}
 
-		pprint (message)
+		else:
+				variabletemplate = yield self.collection.find_one({}, projection={"_id": False, "user_id": False, "ngrams": False, "utc_epoch": False})
+				if not variabletemplate:
+					raise Exception("No such variable template exists")
+				message = {"error": False, "success": True,  "data": variabletemplate}
+
 		self.write(message)
 		self.finish()
 		return
@@ -110,19 +115,19 @@ class VariableTemplates(tornado.web.RequestHandler):
 	@tornado.gen.coroutine
 	def  delete(self):
 		user_id = self.request.arguments.get("user_id")[0].decode("utf-8")
-		variable_id = self.request.arguments.get("variable_id")[0].decode("utf-8")
+		variabletemplate_id = self.request.arguments.get("variabletemplate_id")[0].decode("utf-8")
 		try:
 			#post_arguments = json.loads(self.request.body.decode("utf-8"))
 			#user_id = post_arguments.get("user_id", None) ##who created this category
-			if not variable_id:
-				raise Exception("Please send the variable id")
+			if not variabletemplate_id:
+				raise Exception("Please send the variable template id")
 		
-			variable = yield self.variable_collection.find_one({"variable_id": variable_id})
+			variable = yield self.collection.find_one({"variabletemplate_id": variabletemplate_id})
 			user = yield self.user_collection.find_one({"user_id": user_id})
 			if user["user_type"] == "superadmin":
-				yield self.variable_collection.delete_one({"variable_id": variable_id})
+				yield self.collection.delete_one({"variabletemplate_id": variabletemplate_id})
 			else:
-				raise Exception("You have insufficient permissions to delete this module")
+				raise Exception("You have insufficient permissions to delete this variable template")
 		
 		except Exception as e:
 			print (e)
@@ -155,10 +160,10 @@ class VariableTemplates(tornado.web.RequestHandler):
 		print (self.request.body)
 		post_arguments = json.loads(self.request.body.decode("utf-8"))
 		print (post_arguments)
-		variable_template_name = post_arguments.get("variable_template_name")
+		variabletemplate_name = post_arguments.get("variabletemplate_name")
 		description = post_arguments.get("description")
 		user_id = post_arguments.get("user_id")
-		data_array = post_arguments.get("data_array")
+		variable_array = post_arguments.get("variable_array")
 		
 		#user = yield db[credentials].find_one({'user_type': user_type, "username": username, "password": password})
 		
@@ -169,24 +174,31 @@ class VariableTemplates(tornado.web.RequestHandler):
 				if not user["variable_template"]:
 					raise Exception ("You do not have sufficient permissions to create variable template")
 
-			if not variable_template_name:
+			if not variabletemplate_name:
 				raise Exception("Variable Template Name is missing")
 
 			if not identifier.startswith("#"):
 				raise Exception("Identifier must starts with #")
 
 
+			if user["user_type"] == "superadmin":
+				creation_approval = True
+			else:
+				creation_approval = False
 
-			variable_object = yield self.variable_collection.find_one({"variable_name": variable_name}, projection={"_id": False, "variable_name": True})
+
+			variable_object = yield self.collection.find_one({"variable_name": variable_name}, projection={"_id": False, "variabletemplate_name": True})
 			if variable_object:
 				raise Exception("variable has already been made, Please select a diffrent name for the variable")
 
 			_id = str(uuid.uuid4())
 
-			variable_object = {"variable_id": _id, "variable_name": variable_name,  "utc_epoch": time.time(), "description": description,
+			variable_object = {"variable_id": _id, "variabletemplate_name": variabletemplate_name,  "utc_epoch": time.time(), "description": description,
 									"indian_time": indian_time(), "ngrams": " ".join(make_ngrams(variable_name)),
-									"user_id": user_id, "identifier": identifier, "data_type": data_type }
-			yield self.variable_collection.insert_one(variable_object)
+									"user_id": user_id,  "variable_array": variable_array, "creation_approval": creation_approval, 
+									"username": user["username"]
+									 }
+			yield self.collection.insert_one(variable_object)
 		
 		except Exception as e:
 				logger.error(e)
@@ -197,7 +209,7 @@ class VariableTemplates(tornado.web.RequestHandler):
 				return 
 
 		variable_object.pop("_id")
-		message = {"error": False, "success": True, "data": {"variable": variable_object, "variable_id": variable_object["variable_id"]}}
+		message = {"error": False, "success": True, "data": {"variabletemplate": variable_object, "variabletemplate_id": _id}}
 		pprint (message)
 		self.write(message)
 		self.finish()
@@ -205,52 +217,54 @@ class VariableTemplates(tornado.web.RequestHandler):
 
 
 	@cors
-	@tornado.gen.coroutine
 	@staticmethod
-	def upload_image(self)
-        user_id = self.request.arguments.get("user_id")[0].decode("utf-8")
-        variable_template_name = self.request.arguments.get("variable_template_name")[0].decode("utf-8")
-        variable_name = self.request.arguments.get("variable_name")[0].decode("utf-8")
+	@tornado.gen.coroutine
+	def upload_image(self):
+		user_id = self.request.arguments.get("user_id")[0].decode("utf-8")
+		variable_template_name = self.request.arguments.get("variable_template_name")[0].decode("utf-8")
+		variable_name = self.request.arguments.get("variable_name")[0].decode("utf-8")
+		
+		user = yield self.users.find_one({"user_id": user_id}, projection={"_id": False, "ngrams": False})
+		parent = yield self.parent_collection.find_one({"module_id": parent_id}, projection={"_id": False, "ngrams": False})
 
 
-        user = yield self.users.find_one({"user_id": user_id}, projection={"_id": False, "ngrams": False})
-        parent = yield self.parent_collection.find_one({"module_id": parent_id}, projection={"_id": False, "ngrams": False})
-
-
-        if not user or not parent:
-            raise Exception("user_id and parent_id must be provided")
-
-        arg = self.request.files["image_data"][0]
+		if not user or not parent:
+			raise Exception("user_id and parent_id must be provided")
+			
+		arg = self.request.files["image_data"][0]
 
 
 		images = self.request.files["image_data"]
-
+		
 		s3_urls = []
 		for image in images:
-        	image_data = image.get("body")
-        	image_name = image.get("filename")
-        	image_content_type = image.get("content_type")
+			image_data = image.get("body")
+			image_name = image.get("filename")
+			image_content_type = image.get("content_type")
 
 
 
 		def push_to_s3(image_data):
-        	bytesIO = BytesIO()
-        	bytesIO.write(image_data)
-        	bytesIO.seek(0)
+			bytesIO = BytesIO()
+			bytesIO.write(image_data)
+			bytesIO.seek(0)
         
-        	__name = "%s/%s/%s"%(parent["module_name"], user["username"], image_name)
-        	name = __name.lower().replace(" ", "").replace("nanoskill-", "")
+			__name = "%s/%s/%s"%(parent["module_name"], user["username"], image_name)
+			name = __name.lower().replace(" ", "").replace("nanoskill-", "")
 
-        	s3connection.put_object(Body=bytesIO, Bucket=bucket_name, Key=name, 
+			s3connection.put_object(Body=bytesIO, Bucket=bucket_name, Key=name, 
 								ContentType=image_content_type, Metadata= {"user_id": user_id, 
 								"variable_name": variable_name,
 								 "variable_template_name": variable_template_name})
 
-        	url = s3connection.generate_presigned_url('get_object', 
+			url = s3connection.generate_presigned_url('get_object', 
 									Params = {'Bucket': bucket_name, 'Key': name}, ExpiresIn = 10)
-        	return url
-        ##TODO: https://gist.github.com/kn9ts/4b5a9942b6afbfc2534f2f14c87b9b54
-        ##TODO: https://github.com/jmenga/requests-aws-sign
-        self.write({"link": url})
-        self.finish()
-        return
+			return url
+		
+		##TODO: https://gist.github.com/kn9ts/4b5a9942b6afbfc2534f2f14c87b9b54
+		##TODO: https://github.com/jmenga/requests-aws-sign
+		self.write({"link": url})
+		self.finish()
+		return
+
+
