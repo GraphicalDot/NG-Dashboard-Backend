@@ -140,7 +140,7 @@ class VariableTemplates(tornado.web.RequestHandler):
 			return 
 
 
-		self.write({"data": variable_id})
+		self.write({"data": variabletemplate_id})
 		self.finish()
 		return
 
@@ -160,13 +160,13 @@ class VariableTemplates(tornado.web.RequestHandler):
 		to students.
 		"""
 
-		print (self.request.body)
+		pprint (self.request.body)
 		post_arguments = json.loads(self.request.body.decode("utf-8"))
 		print (post_arguments)
 		variabletemplate_name = post_arguments.get("variabletemplate_name")
 		description = post_arguments.get("description")
 		user_id = post_arguments.get("user_id")
-		variable_array = post_arguments.get("variable_array")
+		variables = post_arguments.get("variables")
 		
 		#user = yield db[credentials].find_one({'user_type': user_type, "username": username, "password": password})
 		
@@ -180,9 +180,6 @@ class VariableTemplates(tornado.web.RequestHandler):
 			if not variabletemplate_name:
 				raise Exception("Variable Template Name is missing")
 
-			if not identifier.startswith("#"):
-				raise Exception("Identifier must starts with #")
-
 
 			if user["user_type"] == "superadmin":
 				creation_approval = True
@@ -190,22 +187,22 @@ class VariableTemplates(tornado.web.RequestHandler):
 				creation_approval = False
 
 
-			variable_object = yield self.collection.find_one({"variable_name": variable_name}, projection={"_id": False, "variabletemplate_name": True})
+			variable_object = yield self.collection.find_one({"variabletemplate_name": variabletemplate_name}, projection={"_id": False, "variabletemplate_name": True})
 			if variable_object:
 				raise Exception("variable has already been made, Please select a diffrent name for the variable")
 
 			_id = str(uuid.uuid4())
 
-			variable_object = {"variable_id": _id, "variabletemplate_name": variabletemplate_name,  "utc_epoch": time.time(), "description": description,
-									"indian_time": indian_time(), "ngrams": " ".join(make_ngrams(variable_name)),
-									"user_id": user_id,  "variable_array": variable_array, "creation_approval": creation_approval, 
+			variable_object = {"variabletemplate_id": _id, "variabletemplate_name": variabletemplate_name,  "utc_epoch": time.time(), "description": description,
+									"indian_time": indian_time(), "ngrams": " ".join(make_ngrams(variabletemplate_name)),
+									"user_id": user_id,  "variables": variables, "creation_approval": creation_approval, 
 									"username": user["username"]
 									 }
 			yield self.collection.insert_one(variable_object)
 		
 		except Exception as e:
 				logger.error(e)
-				self.set_status(401)
+				self.set_status(500)
 				self.write(e.__str__())
 				#self.write({"error": False, "success": True})
 				self.finish()
@@ -310,7 +307,7 @@ class VariableTemplatesImages(tornado.web.RequestHandler):
 				self.finish()
 				return 
 
-		self.write({"data": {"key": key, "variable_id": variable_id, "category_id": category_id}})
+		self.write({"data": {"key": key, "variable_id": variable_id, "category_id": category_id}, "error": False, "success": True})
 		self.finish()
 		return 
 

@@ -195,7 +195,10 @@ class Variables(tornado.web.RequestHandler):
 
 			for category in categories:
 				category.update({"category_id": str(uuid.uuid4()) })
-				category.update({"images": []})
+				if data_type == "Image":
+					category.update({"images": []})
+				else:
+					category.update({"text": None})
 
 			variable_object = {"variable_id": _id, "variable_name": variable_name,  "utc_epoch": time.time(), "description": description,
 									"indian_time": indian_time(), "ngrams": " ".join(make_ngrams(variable_name)),

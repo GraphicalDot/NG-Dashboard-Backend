@@ -561,6 +561,7 @@ class Generic(tornado.web.RequestHandler):
 			module = yield self.module_collection.find_one({"module_id": module_id})
 			user = yield self.user_collection.find_one({"user_id": user_id})
 			if user["user_type"] == "superadmin":
+				print ("Ohh fuck the user is superadmin")
 				yield DeleteModule.delete_module(self.db, module, self.module_collection, self.child_collection_name, 
 						self.parent_collection, self.permission_collection)
 
