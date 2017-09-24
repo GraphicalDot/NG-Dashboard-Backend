@@ -33,7 +33,7 @@ from Ontology.ConceptModule.concept import Concepts, ConceptPermissions
 from Ontology.NanoskillModule.nanoskill import Nanoskills, NanoskillPermissions
 from Templates.templates import Templates, TemplateSkeleton
 from VariableModule.variables import Variables
-from VariableModule.variable_template import VariableTemplates
+from VariableModule.variable_template import VariableTemplates, VariableTemplatesImages
 
 
 from Ontology.SubconceptModule.subconcept import Subconcepts, SubconceptPermissions
@@ -105,6 +105,10 @@ app_urls = [
 
             (r"/variabletemplates$", VariableTemplates),
 			(r"/variabletemplates/([a-zA-Z0-9_.-]*$)", VariableTemplates),
+
+
+            (r"/variabletemplatesimages$", VariableTemplatesImages),
+			(r"/variabletemplatesimages/([a-zA-Z0-9_.-]*$)", VariableTemplatesImages),
 
             #(r"/question$", Question),
             #(r"/questions$", Questions),

@@ -1,7 +1,8 @@
 import tornado.options
 import tornado.web
 from SettingsModule.settings import user_collection_name, domain_collection_name, template_collection_name,\
-					indian_time, variable_collection_name, variable_template_collection_name, variable_template_bucket
+					indian_time, variable_collection_name, variable_template_collection_name, variable_template_bucket,\
+					bucket_name, access_key_id, secret_access_key, s3connection
 from LoggingModule.logging import logger
 from tornado.ioloop import IOLoop
 import hashlib
@@ -11,7 +12,9 @@ from pprint import pprint
 import uuid
 import time
 import math
-
+import boto3
+#from boto.s3.key import Key
+from io import StringIO, BytesIO
 #https://emptysqua.re/blog/refactoring-tornado-coroutines/
 ## finding user from motor  yields a future object which is nothing but a promise that it will have a value in future
 ## and gen.coroutine is a perfect to resolve a future object uyntillit is resolved
@@ -216,50 +219,7 @@ class VariableTemplates(tornado.web.RequestHandler):
 		return 
 
 
-	@cors
-	@staticmethod
-	@tornado.gen.coroutine
-	def upload_image(self):
-		user_id = self.request.arguments.get("user_id")[0].decode("utf-8")
-		variable_template_name = self.request.arguments.get("variable_template_name")[0].decode("utf-8")
-		variable_name = self.request.arguments.get("variable_name")[0].decode("utf-8")
-		
-		user = yield self.users.find_one({"user_id": user_id}, projection={"_id": False, "ngrams": False})
-		parent = yield self.parent_collection.find_one({"module_id": parent_id}, projection={"_id": False, "ngrams": False})
 
-
-		if not user or not parent:
-			raise Exception("user_id and parent_id must be provided")
-			
-		arg = self.request.files["image_data"][0]
-
-
-		images = self.request.files["image_data"]
-		
-		s3_urls = []
-		for image in images:
-			image_data = image.get("body")
-			image_name = image.get("filename")
-			image_content_type = image.get("content_type")
-
-
-
-		def push_to_s3(image_data):
-			bytesIO = BytesIO()
-			bytesIO.write(image_data)
-			bytesIO.seek(0)
-        
-			__name = "%s/%s/%s"%(parent["module_name"], user["username"], image_name)
-			name = __name.lower().replace(" ", "").replace("nanoskill-", "")
-
-			s3connection.put_object(Body=bytesIO, Bucket=bucket_name, Key=name, 
-								ContentType=image_content_type, Metadata= {"user_id": user_id, 
-								"variable_name": variable_name,
-								 "variable_template_name": variable_template_name})
-
-			url = s3connection.generate_presigned_url('get_object', 
-									Params = {'Bucket': bucket_name, 'Key': name}, ExpiresIn = 10)
-			return url
 		
 		##TODO: https://gist.github.com/kn9ts/4b5a9942b6afbfc2534f2f14c87b9b54
 		##TODO: https://github.com/jmenga/requests-aws-sign
@@ -267,4 +227,100 @@ class VariableTemplates(tornado.web.RequestHandler):
 		self.finish()
 		return
 
+
+
+
+
+class VariableTemplatesImages(tornado.web.RequestHandler):
+	def initialize(self):
+			self.db = self.settings["db"]
+			self.variable_collection = self.db[variable_collection_name]
+			self.collection = self.db[variable_template_collection_name]
+			self.user_collection = self.db[user_collection_name]
+
+	@cors
+	@tornado.web.asynchronous
+	@tornado.gen.coroutine
+	def post(self):
+
+		user_id = self.request.arguments.get("user_id")[0].decode("utf-8")
+		variable_id = self.request.arguments.get("variable_id")[0].decode("utf-8")
+		category_id = self.request.arguments.get("category_id")[0].decode("utf-8")
+		''' 
+		user = yield self.users.find_one({"user_id": user_id}, projection={"_id": False, "ngrams": False})
+		parent = yield self.parent_collection.find_one({"module_id": parent_id}, projection={"_id": False, "ngrams": False})
+		if not user or not parent:
+			raise Exception("user_id and parent_id must be provided")
+		'''
+		variable = yield self.variable_collection.find_one({"variable_id": variable_id}, projection={"_id": False,
+																		 "variable_name": True, "categories": True})
+		for category in variable["categories"]:
+			if category["category_id"] == category_id:
+				category_name = category["category_name"]			
+
+		def push_to_s3(image_data, image_name, variable_id, category_id, user_id):
+			bytesIO = BytesIO()
+			bytesIO.write(image_data)
+			bytesIO.seek(0)
+        
+
+
+			image_id = hashlib.md5(image_data).hexdigest()
+			name = "%s/%s/%s"%(variable["variable_name"], category_name, image_id)
+
+			s3connection.put_object(Body=bytesIO, Bucket=variable_template_bucket, Key=name, 
+								ContentType=image_content_type, Metadata= {"user_id": user_id, 
+								"variable_id": variable_id,
+								 "category_id": category_id})
+
+			url = s3connection.generate_presigned_url('get_object', 
+									Params = {'Bucket': variable_template_bucket, 'Key': name}, ExpiresIn = 10000)
+			return (url, name)
+
+		image = self.request.files["image_data"][0]
+		image_data = image.get("body")
+		image_name = image.get("filename")
+		image_content_type = image.get("content_type")
+		#TODO: Change bucket name here
+		pprint (user_id)
+		pprint (variable_id)
+
+		(url, name) =  push_to_s3(image_data, image_name, variable_id, category_id, user_id)
+		message = {"error": False, "success": True, "data": {"variable_id": variable_id, "category_id": category_id, "url": url, 
+															"key": name, "image_name": image_name}}
+		pprint (message)
+		self.write(message)
+		self.finish()
+		return 
+
+	@cors
+	@tornado.web.asynchronous
+	@tornado.gen.coroutine
+	def delete(self):
+		try:
+			variable_id = self.request.arguments.get("variable_id")[0].decode("utf-8")
+			category_id = self.request.arguments.get("category_id")[0].decode("utf-8")
+			key = self.request.arguments.get("key")[0].decode("utf-8")
+			s3connection.delete_object( Bucket=variable_template_bucket, Key=key)
+		except Exception as e:
+				logger.error(e)
+				self.set_status(500)
+				self.write(e.__str__())
+				#self.write({"error": False, "success": True})
+				self.finish()
+				return 
+
+		self.write({"data": {"key": key, "variable_id": variable_id, "category_id": category_id}})
+		self.finish()
+		return 
+
+		
+		
+	@cors
+	@tornado.web.asynchronous
+	@tornado.gen.coroutine
+	def options(self, domain_id=None, user_id=None):
+        # no body
+		self.set_status(204)
+		self.finish()
 
