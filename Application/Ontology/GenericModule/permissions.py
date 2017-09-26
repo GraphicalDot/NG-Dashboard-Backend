@@ -21,6 +21,7 @@ class Permissions(object):
 
         return result
 
+
     @staticmethod
     @coroutine
     def get_permission_rest_parameter(user, module, rest_parameter, permission_collection):

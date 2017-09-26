@@ -27,14 +27,7 @@ reader = codecs.getreader("utf-8")
 
 """
 admin will have all the get and add permissions pn all the objects.
-
-If a user creates a module then he/she will have automatically the permissions 
-to create its children. He will also have the get and edit permissions on this object.
-Now   
-
-In Get requests, Onlythose modules will  be rendered which will have creation_approval=True and
-deletion_approval=False for users and admin users.
-Superadmin will get all the modules.
+If a user creates a domain, He will have all the permissions on this module
 
 """
 class GenericPermissions(tornado.web.RequestHandler):
@@ -401,7 +394,20 @@ class Generic(tornado.web.RequestHandler):
 		##which is not serializable
 		##TODO : implement JWT tokens
 		module.pop("_id")
-		self.write({"error": False, "success": True, "data": module})
+		module.pop("ngrams")
+		
+		#because in get request we are sending in the length of the children array
+		module["children"] = 0
+		##adding permission to this newly created module, If a user is superadmin he will have all the permissions
+		## If a user is creater he will have all the permissions on it.
+
+		permission = {'add_child': True, 'delete': True, 'edit': True, 'get': True}
+		module["permission"] = permission
+		self.write({"error": False, "success": True,  "data":
+										 {"module": module, 
+										"module_id": module["module_id"],
+										"message": "%s with name %s has been added"%(self.module_type, module["module_name"]), 
+										}})
 		self.finish()
 		return 
 
@@ -565,10 +571,8 @@ class Generic(tornado.web.RequestHandler):
 				yield DeleteModule.delete_module(self.db, module, self.module_collection, self.child_collection_name, 
 						self.parent_collection, self.permission_collection)
 
-					
-				message = {"error": False, "success": True, "message": "Module %s with module_id %s and module_name %s has been \
-				deleted"%(self.module_type, module_id, module["module_name"]), "data": module_id}
-				self.write(message)
+				message = "Module %s with module_id %s and module_name %s has been deleted"%(self.module_type, module_id, module["module_name"])
+				self.write({"error": False, "success": True, "data": {"module_id": module_id, "message": message}})
 				self.finish()
 				return
 				
@@ -580,8 +584,11 @@ class Generic(tornado.web.RequestHandler):
 						self.parent_collection, self.permission_collection)
 
 			
-				message = {"error": False, "success": True, "data": "Module %s with module_id %s and module_name %s submitted for deletion and requires superadmin approval\
-									"%(self.module_type, module_id, module["module_name"]), "data": module_id}
+				message = "Module %s with module_id %s and module_name %s submitted for deletion and requires superadmin approval\
+									"%(self.module_type, module_id, module["module_name"])
+				self.write({"error": False, "success": True, "data": {"module_id": module_id, "message": message}})
+				self.finish()
+				return
 
 			else:
 				message = "Insufficient permissions"
@@ -596,7 +603,7 @@ class Generic(tornado.web.RequestHandler):
 			self.finish()
 			return 
 
-
+		pprint (module_id)
 		self.write({"data": module_id})
 		self.finish()
 		return
@@ -687,3 +694,80 @@ class Generic(tornado.web.RequestHandler):
 		self.write(message)
 		self.finish()
 		return
+
+
+class Allmodules(tornado.web.RequestHandler):
+
+
+	def initialize(self):
+		self.db = self.settings["db"]
+		self.parent_collection = None		
+		self.parent_name = None
+		self.module_collection = None
+		self.user_collection = None
+		self.module_type = None
+		self.child_collection = None
+		self.child_collection_name = None
+		self.permission_collection = db[permission_collection_name]
+		self.action_collection = db[action_collection_name]
+		
+
+
+	@cors
+	@tornado.web.asynchronous
+	@tornado.gen.coroutine
+	def options(self, domain_id=None, user_id=None):
+        # no body
+		self.set_status(204)
+		self.finish()
+
+
+	@cors
+	@tornado.web.asynchronous
+	@tornado.gen.coroutine
+	def get(self):
+		modules = []
+		try:
+			search_text = self.request.arguments.get("search_text")[0].decode("utf-8")
+		except Exception:
+			search_text = None
+
+		try:
+			skip = self.request.arguments.get("skip")[0].decode("utf-8")
+		except Exception:
+			skip = 0
+		try:
+			limit = self.request.arguments.get("limit")[0].decode("utf-8")
+		except Exception:
+			limit = 1000
+
+		
+		if search_text:
+				module_count = yield self.module_collection.find({ 
+							"$text":{"$search": search_text}}, projection={"_id": False, "module_name": True, "module_id": True}).count()
+				
+				pprint ("This is the module count %s"%module_count)
+				cursor = self.module_collection.find({"$text":
+						{"$search": search_text}}, projection={"_id": False, "module_name": True, "module_id": True}).sort("children", -1).skip(skip).limit(limit)
+				while (yield cursor.fetch_next):
+					modules.append(cursor.next_object())
+			
+		else:
+				module_count = yield self.module_collection.find(projection={"_id": False, "module_name": True, "module_id": True}).count()
+				cursor = self.module_collection.find(projection={"_id": False, "module_name": True, "module_id": True}).sort("children", -1).skip(skip).limit(limit)
+				while (yield cursor.fetch_next):
+					modules.append(cursor.next_object())
+		
+		
+		#Now the front end nees data in terms of module_ids and modules
+		
+
+		message = {"error": True, "success": False, "message": "Success", "data":  modules}
+
+		pprint (message)
+		self.write(message)
+		self.finish()
+		return
+
+
+

@@ -29,7 +29,7 @@ from SettingsModule.settings import mongo_db, nanoskill_collection_name, domain_
                                              variable_template_collection_name
 from Ontology.DomainModule.domain import Domains
 from Ontology.DomainModule.domain import DomainPermissions
-from Ontology.ConceptModule.concept import Concepts, ConceptPermissions
+from Ontology.ConceptModule.concept import Concepts, ConceptPermissions, Allconcepts
 from Ontology.NanoskillModule.nanoskill import Nanoskills, NanoskillPermissions
 from Templates.templates import Templates, TemplateSkeleton
 from VariableModule.variables import Variables
@@ -74,7 +74,7 @@ app_urls = [
 			(r"/conceptpermissions$", ConceptPermissions),
 			(r"/conceptpermissions/([a-zA-Z0-9_.-]*$)", ConceptPermissions),
 			(r"/concepts/([a-zA-Z0-9_.-]*$)", Concepts),
-            			
+            (r"/allconcepts$", Allconcepts),
 
 
             (r"/subconcepts$", Subconcepts),

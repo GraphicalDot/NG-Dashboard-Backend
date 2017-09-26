@@ -64,8 +64,9 @@ class DeleteModule(object):
 
 		## Deleting child entry from the parent id as child_d is stroed in the parent under the array named as 
 		## children
-		yield parent_collection.update_one({"module_id": module["parent_id"]}, {"$pull": {"children": {'module_id': module["module_id"],
-		'module_name': module["module_name"]}}}, upsert=False)
+		if parent_collection:
+				yield parent_collection.update_one({"module_id": module["parent_id"]}, {"$pull": {"children": {'module_id': module["module_id"],
+				'module_name': module["module_name"]}}}, upsert=False)
 
 		if child_collection_name:
 		##deleting children one by one
