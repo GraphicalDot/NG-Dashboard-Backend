@@ -11,7 +11,7 @@ import hashlib
 import jwt
 import json
 from AuthenticationModule.authentication import auth
-
+from pprint import pprint 
 
 
 class DeleteModule(object):
@@ -65,8 +65,16 @@ class DeleteModule(object):
 		## Deleting child entry from the parent id as child_d is stroed in the parent under the array named as 
 		## children
 		if parent_collection:
-				yield parent_collection.update_one({"module_id": module["parent_id"]}, {"$pull": {"children": {'module_id': module["module_id"],
-				'module_name': module["module_name"]}}}, upsert=False)
+				print ("parent collection found")
+				result = yield parent_collection.find_one({"module_id": module["parent_id"]}, projection={"ngrams": False})
+				pprint (result)
+				child = {'module_id': module["module_id"], 'module_name': module["module_name"]}
+				pprint (child)
+				result = yield parent_collection.update_one({"module_id": module["parent_id"]}, {"$pull": {"children": child }})
+				pprint (result)
+				result2 = yield parent_collection.find_one({"module_id": module["parent_id"]}, projection={"ngrams": False})
+				pprint (result2)
+
 
 		if child_collection_name:
 		##deleting children one by one
