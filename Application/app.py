@@ -30,13 +30,13 @@ from SettingsModule.settings import mongo_db, nanoskill_collection_name, domain_
 from Ontology.DomainModule.domain import Domains
 from Ontology.DomainModule.domain import DomainPermissions
 from Ontology.ConceptModule.concept import Concepts, ConceptPermissions, Allconcepts
-from Ontology.NanoskillModule.nanoskill import Nanoskills, NanoskillPermissions
+from Ontology.NanoskillModule.nanoskill import Nanoskills, NanoskillPermissions, Allnanoskills
 from Templates.templates import Templates, TemplateSkeleton
 from VariableModule.variables import Variables
 from VariableModule.variable_template import VariableTemplates, VariableTemplatesImages
 
 
-from Ontology.SubconceptModule.subconcept import Subconcepts, SubconceptPermissions
+from Ontology.SubconceptModule.subconcept import Subconcepts, SubconceptPermissions, Allsubconcepts
 from Ontology.QuestionModule.question import Questions, QuestionPermissions
 from Ontology.QuestionModule.upload_image import UploadImage
 from UsersModule.users import Users
@@ -80,7 +80,8 @@ app_urls = [
             (r"/subconcepts$", Subconcepts),
 			(r"/subconceptpermissions$", SubconceptPermissions),
 			(r"/subconceptpermissions/([a-zA-Z0-9_.-]*$)", SubconceptPermissions),
-			(r"/concepts/([a-zA-Z0-9_.-]*$)", Subconcepts),
+			(r"/subconcepts/([a-zA-Z0-9_.-]*$)", Subconcepts),
+            (r"/allsubconcepts$", Allsubconcepts),
 
 
 
@@ -88,6 +89,7 @@ app_urls = [
 			(r"/nanoskillpermissions$", NanoskillPermissions),
 			(r"/nanoskillpermissions/([a-zA-Z0-9_.-]*$)", NanoskillPermissions),
 			(r"/nanoskills/([a-zA-Z0-9_.-]*$)", Nanoskills),
+            (r"/allnanoskills$", Allnanoskills),
 
 
             (r"/questions$", Questions),

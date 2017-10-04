@@ -253,6 +253,9 @@ class Generic(tornado.web.RequestHandler):
 		basestring       word: word to split into ngrams
 		int   min_size: minimum size of ngrams
 		"""
+		if not word:
+			return []
+
 		length = len(word)
 		size_range = range(min_size, max(length, min_size) + 1)
 		return list(set(
@@ -268,6 +271,7 @@ class Generic(tornado.web.RequestHandler):
 		if not self.request.body:
 			raise Exception("Dude! I need some data")
 		post_arguments = json.loads(self.request.body.decode("utf-8"))
+		pprint (post_arguments)
 		module_name = post_arguments.get("module_name", None)
 		description = post_arguments.get("description", None)
 		user_id = post_arguments.get("user_id")
@@ -277,6 +281,8 @@ class Generic(tornado.web.RequestHandler):
 		prereq_modules_all_parents = post_arguments.get("prereq_modules_all_parents")
 		prereq_modules = post_arguments.get("prereq_modules")
 		difficulty = post_arguments.get("difficulty")
+
+
         ##Permissions
 		##For the user other 
 		
@@ -339,32 +345,34 @@ class Generic(tornado.web.RequestHandler):
 				hint = post_arguments.get("hint", None)
 				images = post_arguments.get("images", None)
 				videos = post_arguments.get("videos", None)
-				
-				if None in [question_text, question_type, options]:
-					raise Exception("Fields shouldnt be empty")
+				content = post_arguments.get("content", None)
+				''' 
 				if question_type not in question_types:
 					raise Exception("Specify a valid question type")
-						
 				if options == []:
 					raise Exception("options for question shouldnt be left empty")
+				'''		
 				
 				##this is to index all parents of this question, so a search can be build on the parents of this question
 				parent_ngrams = []
 				for parent in parents:
 					parent_ngrams.extend(parent.get("module_name"))
 
-				module = {'module_name': "%s-%s"%(self.module_type, module_name), "description": description, "parent_id": parent_id, "parents": parents,
+				print ("I reached here")
+				module = {'module_name': module_name, "description": description, "parent_id": parent_id, "parents": parents,
 							 "module_id": module_id, "utc_epoch": time.time(), "indian_time": indian_time(), "username": user["username"],
 							 "user_id": user_id, "status": True, "deletion_approval": False, "creation_approval": creation_approval, "parent_name": parent_module["module_name"],
 							  "module_type": self.module_type, "user_type": user["user_type"], "child_collection_name": self.child_collection_name, "children": [],
-							  "ngrams": " ".join(self.make_ngrams(module_name) + self.make_ngrams(question_text)  + parent_ngrams), 
-							  "question_text": question_text, 
+								"ngrams": " ".join(self.make_ngrams(module_name) + self.make_ngrams(question_text)), 
+							  "question_text": question_text,
+							  "content": content, 
 							  "options": options, 
 							  "question_type": question_type,
 							  "hint": hint,
 							  "images": images,
 							  "videos": videos
 							  }
+				print (module)
 
 			else:
 				#TODO
@@ -381,7 +389,11 @@ class Generic(tornado.web.RequestHandler):
 							  }
 			
 			
-			
+			if self.module_type == "nanoskill":
+				skip_nanoskills = post_arguments.get("skip_nanoskills")
+				print ("Updating nannoskills with skip nannoskill as %s"%skip_nanoskills)
+				module.update({"skip_nanoskills": skip_nanoskills})
+
 			result = yield self.module_collection.insert_one(module)
 			pprint (result)
 			## This statement will help in get object as user can only get documents on which he has permission
@@ -651,6 +663,8 @@ class Allmodules(tornado.web.RequestHandler):
 	@tornado.web.asynchronous
 	@tornado.gen.coroutine
 	def get(self):
+		parent_id = self.request.arguments.get("parent_id")[0].decode("utf-8")
+		print (parent_id)
 		modules = []
 		try:
 			search_text = self.request.arguments.get("search_text")[0].decode("utf-8")
@@ -668,18 +682,18 @@ class Allmodules(tornado.web.RequestHandler):
 
 		
 		if search_text:
-				module_count = yield self.module_collection.find({ 
+				module_count = yield self.module_collection.find({"parent_id": { "$ne": parent_id },  
 							"$text":{"$search": search_text}}, projection={"_id": False, "module_name": True, "module_id": True}).count()
 				
 				pprint ("This is the module count %s"%module_count)
-				cursor = self.module_collection.find({"$text":
+				cursor = self.module_collection.find({"parent_id": { "$ne": parent_id }, "$text":
 						{"$search": search_text}}, projection={"_id": False, "module_name": True, "module_id": True}).sort("children", -1).skip(skip).limit(limit)
 				while (yield cursor.fetch_next):
 					modules.append(cursor.next_object())
 			
 		else:
-				module_count = yield self.module_collection.find(projection={"_id": False, "module_name": True, "module_id": True}).count()
-				cursor = self.module_collection.find(projection={"_id": False, "module_name": True, "module_id": True}).sort("children", -1).skip(skip).limit(limit)
+				module_count = yield self.module_collection.find({"parent_id": { "$ne": parent_id } }, projection={"_id": False, "module_name": True, "module_id": True}).count()
+				cursor = self.module_collection.find({"parent_id": { "$ne": parent_id } },projection={"_id": False, "module_name": True, "module_id": True}).sort("children", -1).skip(skip).limit(limit)
 				while (yield cursor.fetch_next):
 					modules.append(cursor.next_object())
 		
