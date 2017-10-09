@@ -64,6 +64,9 @@ class Users(tornado.web.RequestHandler):
 		user_type = post_arguments.get("user_type", None)
 		create_domain = post_arguments.get("create_domain", None)
 		user_secret = post_arguments.get("user_secret", None)
+		create_variable = post_arguments.get("create_variable", None)
+		create_variabletemplate = post_arguments.get("create_variabletemplate", None)
+		create_template = post_arguments.get("create_template", None)
 		##Permissions
 		##For the user other 
 
@@ -98,7 +101,8 @@ class Users(tornado.web.RequestHandler):
 							 "user_id": _id,"utc_epoch": time.time(), "indian_time": indian_time(), "email": email, 
 							 "password": password, "user_type": user_type,
 							 "permissions": permissions, "phone_number": phone_number, "create_domain": create_domain,
-							 "ngrams": " ".join(self.make_ngrams(username) + self.make_ngrams(email) + self.make_ngrams(first_name) + self.make_ngrams(last_name))
+							 "ngrams": " ".join(self.make_ngrams(username) + self.make_ngrams(email) + self.make_ngrams(first_name) + self.make_ngrams(last_name)),
+							"create_template": create_template, "create_variable": create_variable, "create_variabletemplate": create_variabletemplate,
 							 }
 
 			yield self.collection.insert_one(user)

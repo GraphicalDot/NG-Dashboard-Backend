@@ -49,5 +49,7 @@ client = pymongo.MongoClient(uri)
 r = requests.post("http://localhost:8000/signup", data=data)   
 response: {'error': False, 'success': True, 'token': 'security'}
 
-
+Start mongodb by using this command
+sudo mongod --dbpath /var/lib/mongodb --fork --logpath /var/log/mongodb/mogod.log --setParameter failIndexKeyTooLong=false
+as most of the times the key value is going beyond 1024
 

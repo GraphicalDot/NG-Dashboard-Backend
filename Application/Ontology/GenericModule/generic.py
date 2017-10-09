@@ -241,9 +241,11 @@ class Generic(tornado.web.RequestHandler):
 		parent_document["parents"].append({"module_id": parent_id,
 								"module_name": parent_document["module_name"] })
 		parents = parent_document["parents"]
+		pprint (parents)
 					##This will add a children to the parent collection
-		yield self.parent_collection.update({"module_id": parent_id}, {"$addToSet": \
+		result = yield self.parent_collection.update({"module_id": parent_id}, {"$addToSet": \
 			{"children": {"module_id": module_id, "module_name": module_name}}}, upsert=False)
+
 
 		return parents
 
@@ -271,7 +273,6 @@ class Generic(tornado.web.RequestHandler):
 		if not self.request.body:
 			raise Exception("Dude! I need some data")
 		post_arguments = json.loads(self.request.body.decode("utf-8"))
-		pprint (post_arguments)
 		module_name = post_arguments.get("module_name", None)
 		description = post_arguments.get("description", None)
 		user_id = post_arguments.get("user_id")
@@ -287,7 +288,7 @@ class Generic(tornado.web.RequestHandler):
 		##For the user other 
 		
 		#user = yield db[credentials].find_one({'user_type': user_type, "username": username, "password": password})
-		
+		pprint (self.module_type)		
 		pprint ("This is the parent id %s"%parent_id)
 		try:
 			if None in [module_name, description, user_id]:
@@ -339,6 +340,7 @@ class Generic(tornado.web.RequestHandler):
 				creation_approval = False
 
 			if self.module_type == "question":
+				pprint ("This is the module type Question")
 				question_text = post_arguments.get("question_text")
 				options = post_arguments.get("options")
 				question_type = post_arguments.get("question_type")
@@ -375,6 +377,7 @@ class Generic(tornado.web.RequestHandler):
 				print (module)
 
 			else:
+
 				#TODO
 				module = {'module_name': module_name, "description": description, "parent_id": parent_id, "parents": parents,
 							 "module_id": module_id, "utc_epoch": time.time(), "indian_time": indian_time(), "username": user["username"],
