@@ -97,6 +97,7 @@ app_urls = [
             (r"/questionpermissions$", QuestionPermissions),
 			(r"/questionpermissions/([a-zA-Z0-9_.-]*$)", QuestionPermissions),
 			(r"/uploadimage$", UploadImage),
+			(r"/uploadimage/([a-zA-Z0-9_.-]*$)", UploadImage),
 
             (r"/templates$", Templates),
 			(r"/templates/([a-zA-Z0-9_.-]*$)", Templates),

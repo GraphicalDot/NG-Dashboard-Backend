@@ -51,8 +51,20 @@ class UploadImage(tornado.web.RequestHandler):
     @tornado.web.asynchronous
     @tornado.gen.coroutine
     def delete(self):
-        
-        s3connection.delete_object(Bucket='mybucketname', Key='myfile.whatever')
+        parent_name = self.request.arguments.get("parent_name")[0].decode("utf-8")
+        module_id = self.request.arguments.get("module_id")[0].decode("utf-8")
+        image_name = self.request.arguments.get("image_name")[0].decode("utf-8")
+
+        pprint(parent_name)
+        pprint(module_id)
+        pprint(image_name)
+        __name = "Questions/%s/%s/%s"%(parent_name, module_id, image_name)
+        name = __name.lower().replace(" ", "").replace("nanoskill-", "")
+
+        s3connection.delete_object(Bucket=bucket_name, Key=name)
+        self.write({"message": "Image with name %s has been deleted"%image_name})
+        self.finish()
+        return
 
 
     
@@ -61,10 +73,10 @@ class UploadImage(tornado.web.RequestHandler):
     @tornado.gen.coroutine
     def post(self):
 
-
+        pprint (self.request.arguments)
         user_id = self.request.arguments.get("user_id")[0].decode("utf-8")
         parent_id = self.request.arguments.get("parent_id")[0].decode("utf-8")
-
+        module_id = self.request.arguments.get("module_id")[0].decode("utf-8")
 
         user = yield self.users.find_one({"user_id": user_id}, projection={"_id": False, "ngrams": False})
         parent = yield self.parent_collection.find_one({"module_id": parent_id}, projection={"_id": False, "ngrams": False})
@@ -79,18 +91,25 @@ class UploadImage(tornado.web.RequestHandler):
         image_name = self.request.files["image_data"][0].get("filename")
         image_content_type = self.request.files["image_data"][0].get("content_type")
 
+        image_id = hashlib.md5(image_name.encode("utf-8")).hexdigest()
 
+        print(image_id)
         bytesIO = BytesIO()
         bytesIO.write(image_data)
         bytesIO.seek(0)
         
-        __name = "%s/%s/%s"%(parent["module_name"], user["username"], image_name)
+        __name = "Questions/%s/%s/%s"%(parent["module_name"], module_id, image_name)
         name = __name.lower().replace(" ", "").replace("nanoskill-", "")
 
+        print (name)
         s3connection.put_object(Body=bytesIO, Bucket=bucket_name, Key=name, ContentType=image_content_type, Metadata= {"user_id": user_id, "nanoskill_id": parent_id, 
-                                                                                                             "nanoskill_name": parent["module_name"] })
+                                                                                                             "nanoskill_name": parent["module_name"], 
+                                                                                                             "module_id": module_id })
 
+        __data = {"key": name , "user_name": user["username"], "user_id": user_id, "name": image_name}
         url = s3connection.generate_presigned_url('get_object', Params = {'Bucket': bucket_name, 'Key': name}, ExpiresIn = 10)
+        yield self.questions.update_one({"module_id": module_id}, {"$set": {"images.%s"%str(image_id): __data}}, upsert=False)
+        
         print (url)
         ##TODO: https://gist.github.com/kn9ts/4b5a9942b6afbfc2534f2f14c87b9b54
         ##TODO: https://github.com/jmenga/requests-aws-sign

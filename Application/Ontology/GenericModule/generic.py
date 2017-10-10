@@ -342,12 +342,7 @@ class Generic(tornado.web.RequestHandler):
 			if self.module_type == "question":
 				pprint ("This is the module type Question")
 				question_text = post_arguments.get("question_text")
-				options = post_arguments.get("options")
 				question_type = post_arguments.get("question_type")
-				hint = post_arguments.get("hint", None)
-				images = post_arguments.get("images", None)
-				videos = post_arguments.get("videos", None)
-				content = post_arguments.get("content", None)
 				''' 
 				if question_type not in question_types:
 					raise Exception("Specify a valid question type")
@@ -367,12 +362,8 @@ class Generic(tornado.web.RequestHandler):
 							  "module_type": self.module_type, "user_type": user["user_type"], "child_collection_name": self.child_collection_name, "children": [],
 								"ngrams": " ".join(self.make_ngrams(module_name) + self.make_ngrams(question_text)), 
 							  "question_text": question_text,
-							  "content": content, 
-							  "options": options, 
 							  "question_type": question_type,
-							  "hint": hint,
-							  "images": images,
-							  "videos": videos
+							  "images": {},
 							  }
 				print (module)
 
