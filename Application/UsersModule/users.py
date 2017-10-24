@@ -85,14 +85,14 @@ class Users(tornado.web.RequestHandler):
 			if user:
 				raise Exception("User Exists")
 
-			_id = hashlib.sha1(email.encode("utf-8")).hexdigest()
-			password=hashlib.sha1(password.encode("utf-8")).hexdigest()
+			_id = hashlib.sha256(email.encode("utf-8")).hexdigest()
+			password=hashlib.sha256(password.encode("utf-8")).hexdigest()
 
 			##This is because i have made the rest of the code for general purpose user as False for checking
+			"""
 			if user_type == "general":
 				user_type = False			
 
-			"""
 			if category_permissions:
 					a = CategoriesPermissions()
 					yield a.update_permissions(self.db, user_id, category_permissions)
@@ -131,16 +131,16 @@ class Users(tornado.web.RequestHandler):
 	@cors
 	@tornado.web.asynchronous
 	@tornado.gen.coroutine
-	def put(self, user_id):
+	def put(self):
 		##TODO if a user has to become a superadmin
 		details = json.loads(self.request.body.decode("utf-8"))
-		
-		user = yield self.collection.find_one({"user_id": user_id}, projection={'_id': False})
+		pprint (details)
+		user = yield self.collection.find_one({"user_id": details["user_id"]}, projection={'_id': False})
 		if user:
 			logger.info(details)
-			result = yield self.collection.update_one({'user_id': user_id}, {'$set': details})
-			logger.info(result.modified_count)
-			message = {"error": False, "success": True, "data": "User has been updated"}
+			result = yield self.collection.find_and_modify({'user_id': details["user_id"]}, {'$set': details})
+			logger.info(result)
+			message = {"error": False, "success": True, "message": "User with username %s has been updated"%user["username"], "data": details}
 
 		else:
 				message = {"error": True, "success": False, "message": "User doesnt exist"}

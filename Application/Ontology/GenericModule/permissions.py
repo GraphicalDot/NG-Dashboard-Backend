@@ -328,7 +328,7 @@ class Permissions(object):
     def is_domain(module_type, user):
         if module_type == "domain":
             print ("module_type is domain")
-            if user["user_type"] != "superadmin" or  not user["user_type"] != "admin":
+            if user["user_type"] != "superadmin" or  user["user_type"] != "admin":
                 if not user["create_domain"]:
                     raise Exception("The user who is trying to create this domain have insufficient permissions")
             print ("user have create_domain permissions")

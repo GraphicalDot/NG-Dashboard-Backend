@@ -55,9 +55,6 @@ class UploadImage(tornado.web.RequestHandler):
         module_id = self.request.arguments.get("module_id")[0].decode("utf-8")
         image_name = self.request.arguments.get("image_name")[0].decode("utf-8")
 
-        pprint(parent_name)
-        pprint(module_id)
-        pprint(image_name)
         __name = "Questions/%s/%s/%s"%(parent_name, module_id, image_name)
         name = __name.lower().replace(" ", "").replace("nanoskill-", "")
 
@@ -77,6 +74,7 @@ class UploadImage(tornado.web.RequestHandler):
         user_id = self.request.arguments.get("user_id")[0].decode("utf-8")
         parent_id = self.request.arguments.get("parent_id")[0].decode("utf-8")
         module_id = self.request.arguments.get("module_id")[0].decode("utf-8")
+        
 
         user = yield self.users.find_one({"user_id": user_id}, projection={"_id": False, "ngrams": False})
         parent = yield self.parent_collection.find_one({"module_id": parent_id}, projection={"_id": False, "ngrams": False})
@@ -104,10 +102,10 @@ class UploadImage(tornado.web.RequestHandler):
         print (name)
         s3connection.put_object(Body=bytesIO, Bucket=bucket_name, Key=name, ContentType=image_content_type, Metadata= {"user_id": user_id, "nanoskill_id": parent_id, 
                                                                                                              "nanoskill_name": parent["module_name"], 
-                                                                                                             "module_id": module_id })
+                                                                                                             "module_id": module_id }, Expires = 604800)
 
         __data = {"key": name , "user_name": user["username"], "user_id": user_id, "name": image_name}
-        url = s3connection.generate_presigned_url('get_object', Params = {'Bucket': bucket_name, 'Key': name}, ExpiresIn = 10)
+        url = s3connection.generate_presigned_url('get_object', Params = {'Bucket': bucket_name, 'Key': name})
         yield self.questions.update_one({"module_id": module_id}, {"$set": {"images.%s"%str(image_id): __data}}, upsert=False)
         
         print (url)

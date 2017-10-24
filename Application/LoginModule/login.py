@@ -50,7 +50,7 @@ class Login(tornado.web.RequestHandler):
 		print (post_arguments)
 		username = post_arguments.get("username", None)
 		password = post_arguments.get("password", None)
-
+		password=hashlib.sha256(password.encode("utf-8")).hexdigest()
 		
 		#user = yield db[credentials].find_one({'user_type': user_type, "username": username, "password": password})
 		
@@ -60,7 +60,7 @@ class Login(tornado.web.RequestHandler):
 
 
 			user = yield self.collection.find_one({"username": username, "password": password}, projection={"_id": False, "phone_number": False, 
-																				"permissions": False, "indian_time": False, "utc_epoch": False})
+																				"permissions": False, "ngrams": False, "indian_time": False, "utc_epoch": False})
 			if not user:
 				raise Exception("user doesnt exist")
 			token =  jwt.encode({'username': user["username"], "password": user["password"]}, jwt_secret, algorithm='HS256')

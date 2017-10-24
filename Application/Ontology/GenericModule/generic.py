@@ -341,7 +341,7 @@ class Generic(tornado.web.RequestHandler):
 
 			if self.module_type == "question":
 				pprint ("This is the module type Question")
-				question_text = post_arguments.get("question_text")
+				question_text = "No Content yet"
 				question_type = post_arguments.get("question_type")
 				''' 
 				if question_type not in question_types:
@@ -363,6 +363,7 @@ class Generic(tornado.web.RequestHandler):
 								"ngrams": " ".join(self.make_ngrams(module_name) + self.make_ngrams(question_text)), 
 							  "question_text": question_text,
 							  "question_type": question_type,
+							  "options": [],
 							  "images": {},
 							  }
 				print (module)
@@ -402,7 +403,7 @@ class Generic(tornado.web.RequestHandler):
 		except Exception as e:
 				logger.error(e)
 				self.set_status(400)
-				self.write({"error": True, "success": False, "token": None, "data": e.__str__()})
+				self.write( e.__str__())
 				self.finish()
 				return 
 
@@ -437,10 +438,15 @@ class Generic(tornado.web.RequestHandler):
 		##TODO if a user has to become a superadmin
 		##On the frontend "children" key gets converted to 0 rather then [], changing while updating the document
 		put_arguments = json.loads(self.request.body.decode("utf-8"))
-		pprint (put_arguments)
+		#pprint (put_arguments)
 
 		edituser = put_arguments.get("user") ##User to whom the permissions will be provided
 		editmodule = put_arguments.get("module")
+
+		try:
+			editmodule.pop("permission")
+		except Exception:
+			pass
 		try:
 			__message = None
 			module = yield self.module_collection.find_one({"module_id": editmodule["module_id"]})
@@ -448,26 +454,49 @@ class Generic(tornado.web.RequestHandler):
 			if not user:
 				raise Exception("This user doesnt exists")
 
+			if not module:
+				raise Exception("This module doesnt exists")
+				
+			pprint ("reached here 460")
+
+			##NO idea why we are converting children key to empty list, possible reason db has children as empty list
 			if user["user_type"] == "superadmin":
 				if editmodule["children"] == 0:
 						editmodule["children"] = []
-				yield self.module_collection.update_one({"module_id": editmodule["module_id"]}, {"$set": editmodule}, upsert=False)
 			else:
-				if Permissions.get_permission_rest_parameter(edituser, editmodule, "edit", self.permission_collection):
-					yield self.module_collection.update_one({"module_id": editmodule["module_id"]}, {"$set": editmodule}, upsert=False)
-				else:
-					raise Exception("You have insufficient Permissions")				
+				##THis is to check if another user is trying to create approval a module
+				if not module["creation_approval"]:
+					if editmodule["creation_approval"]:
+						raise Exception("Only a superadmin can approvae a creation of %s"%self.module_type)		
+						
+
+				if not Permissions.get_permission_rest_parameter(edituser, editmodule, "edit", self.permission_collection):
+					raise Exception("You have insufficient Permissions")		
+
+			if self.module_type == "question":
+					images = module["images"]
+					
+					editmodule.update({"images": images})
+
+			pprint ("reached here")
+			try:
+				editmodule.pop("permission")
+			except Exception:
+				pass
+
+
+			yield self.module_collection.update_one({"module_id": editmodule["module_id"]}, {"$set": editmodule}, upsert=False)
 
 
 		except Exception as e:
 				logger.error(e)
 				self.set_status(400)
-				self.write({"error": True, "success": False, "token": None, "data": e.__str__()})
+				self.write(e.__str__())
 				self.finish()
 				return 
 	
-
-		message = {"error": False, "success": True, "message": "%s with %s has been updated"%(self.module_type, editmodule["module_id"]), "data": editmodule}
+		message = {"error": False, "success": True,  "data": {"module": editmodule, "message": "%s with %s has been updated"%(self.module_type, editmodule["module_id"])}}
+		pprint (message)
 		self.write(message)
 		self.finish()
 		return 
@@ -508,7 +537,8 @@ class Generic(tornado.web.RequestHandler):
 				return
 				
 
-			result = yield Permission.get_permission_delete(user, module, self.permission_collection)
+			result = yield Permissions.get_permission_rest_parameter(user, module, "delete", self.permission_collection)
+			pprint(result)
 			if result:
 			##mark domain and its children under "deletion_approval": pending
 				yield DeleteModule.mark_module(self.db, module, self.module_collection, self.child_collection_name, 
@@ -697,7 +727,6 @@ class Allmodules(tornado.web.RequestHandler):
 		pprint (module_count)
 		message = {"error": True, "success": False, "message": "Success", "data":  modules}
 
-		pprint (message)
 		self.write(message)
 		self.finish()
 		return

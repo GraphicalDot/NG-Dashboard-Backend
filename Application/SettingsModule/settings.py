@@ -1,4 +1,3 @@
-
 import motor
 from datetime import datetime
 from pytz import timezone    
@@ -29,7 +28,7 @@ variable_collection_name = "variables"
 variable_template_collection_name = "variable_templates"
 
 
-jwt_secret = "HelloOfAkind###"
+jwt_secret = "a"
 app_super_admin = "nctsuperadmin"
 app_super_admin_pwd = "1234Pacific###"
 app_super_admin_user_id = "nctsuperadmin###"
@@ -71,7 +70,6 @@ mongo_db = db
 credentials_collection = db["credentials"]
 # For connecting to replication set 
 #mongo_client = motor.motor_tornado.MotorClient('mongodb://host1,host2/?replicaSet=my-replicaset-name')
-
 
 TIME_ZONE =  'Asia/Kolkata'
 
