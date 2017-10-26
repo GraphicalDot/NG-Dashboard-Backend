@@ -93,8 +93,15 @@ class GenericPermissions(tornado.web.RequestHandler):
 						if not result:
 							raise Exception("Insufficient permissions to provide %s permission"%rest_parameter)
 						else:
-							print ("user_type <<%s>> with user_id<<%s>> have %s on %s"%(granter["user_type"], granter["user_id"], rest_parameter, module["module_id"]))
-							yield Permissions.set_permission_rest_paramter(target_user, module, parent, user, rest_parameter, self.permission_collection)
+							##Implies that the user has the relevant permission to pass on or remove permission to the target user
+							##Only case arise is if he wants to remove some permission for the creator
+							## That shouldbe happening
+							if module["user_id"] == user_id:
+								raise Exception("Naughty boy, You cant edit %s permission for the creator of this module and you are not even Superadmin!!!!"%rest_parameter)
+							
+							else:
+								print ("user_type <<%s>> with user_id<<%s>> have %s on %s"%(granter["user_type"], granter["user_id"], rest_parameter, module["module_id"]))
+								yield Permissions.set_permission_rest_paramter(target_user, module, parent, user, rest_parameter, self.permission_collection)
 
 
 
@@ -471,6 +478,7 @@ class Generic(tornado.web.RequestHandler):
 						
 
 				if not Permissions.get_permission_rest_parameter(edituser, editmodule, "edit", self.permission_collection):
+
 					raise Exception("You have insufficient Permissions")		
 
 			if self.module_type == "question":

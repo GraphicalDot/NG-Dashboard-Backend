@@ -25,7 +25,9 @@ class Permissions(object):
     @staticmethod
     @coroutine
     def get_permission_rest_parameter(user, module, rest_parameter, permission_collection):
-
+        ##by default, a creator of a module will every permission on it ecept the delete permission
+        ## But if her permission is explicitly revoked, preference will be given to the 
+        ## permission allotted to her
 
         if user["user_type"] in ["superadmin"]:
             return True

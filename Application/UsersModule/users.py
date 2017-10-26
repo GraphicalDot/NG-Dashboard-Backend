@@ -67,6 +67,7 @@ class Users(tornado.web.RequestHandler):
 		create_variable = post_arguments.get("create_variable", None)
 		create_variabletemplate = post_arguments.get("create_variabletemplate", None)
 		create_template = post_arguments.get("create_template", None)
+		review_order = post_arguments.get("review_order", None)
 		##Permissions
 		##For the user other 
 
@@ -97,12 +98,27 @@ class Users(tornado.web.RequestHandler):
 					a = CategoriesPermissions()
 					yield a.update_permissions(self.db, user_id, category_permissions)
 			"""
+				
+
+			if user_type == "reviewer":
+				create_domain = False
+				create_template = False
+				create_variable = False
+				create_variabletemplate = False
+			if user_type == "superadmin":
+				create_domain = True
+				create_template = True
+				create_variable = True
+				create_variabletemplate = True
+
+
 			user = {'first_name': first_name, "last_name": last_name,"username": username, \
 							 "user_id": _id,"utc_epoch": time.time(), "indian_time": indian_time(), "email": email, 
 							 "password": password, "user_type": user_type,
 							 "permissions": permissions, "phone_number": phone_number, "create_domain": create_domain,
 							 "ngrams": " ".join(self.make_ngrams(username) + self.make_ngrams(email) + self.make_ngrams(first_name) + self.make_ngrams(last_name)),
 							"create_template": create_template, "create_variable": create_variable, "create_variabletemplate": create_variabletemplate,
+							"review_order": review_order
 							 }
 
 			yield self.collection.insert_one(user)
@@ -245,7 +261,15 @@ class Users(tornado.web.RequestHandler):
 		except Exception as e:
 			raise Exception("User id required")
 		
-
+		try:
+			##This is required because during the add permission flag, some users needs to be ommitted 
+			## such as general users cant add permissions for superadmin
+			## there is no point of adding permissions on Ontology to reviewers 
+			## FOr this this flag is created so that api call for this permission add flag 
+			## can remove required users 
+			filter_permission = self.request.arguments.get("filter_permission")[0].decode("utf-8")
+		except Exception as e:
+			filter_permission = False
 
 		users_result = []
 		user = yield self.collection.find_one({"user_id": user_id}, projection={"_id": False, "ngrams": False})
@@ -268,29 +292,37 @@ class Users(tornado.web.RequestHandler):
 			user_ids = []
 			users = []
 
+			## For this case there are five types of user
+			## 1. user herself
+			## 2. superadmin
+			## 3. admin
+			## 4. general users 
+			## 5. Reviewers
+
+			##Rules to follow, 
+			#Once the question is created it will got back to the reviwers at review order one, if they reject it it will come 
+			#back to the user again, if they pass, the question will go to the next stage reviwer
+			## For this pupose there will be a seperate set of apis's known as assigned by
+
+			## user_type = general shall not be shown super
 			##Now the filtering part, A user shall not be shown its her own record.
 			## A general or admin shall not be shown superadmin record.
 			## A general user shouldnt be shown admin or superadmin record
-			for _object in users_result:
-				if not _object.get("user_id") == user_id:
-					if user["user_type"] != "superadmin" or user["user_type"] != "admin":
-						if not _object.get("user_type") == "superadmin" or not _object.get("user_type") == "admin":
-							user_ids.append(_object.get("user_id"))
-							users.append(_object)
-					elif user["user_type"] == "admin": 
-						if _object.get("user_type") == "admin":
-							user_ids.append(_object.get("user_id"))
-							users.append(_object)
-					elif user["user_type"] == "superadmin": 
-						if _object.get("user_type") == "superadmin":
-							user_ids.append(_object.get("user_id"))
-							users.append(_object)
 
+
+			for _object in users_result:
+				if _object.get("user_id") != user_id:
+					if filter_permission:
+						if  _object.get("user_type") != "superadmin" and _object.get("user_type") != "reviewer":
+							user_ids.append(_object.get("user_id"))
+							users.append(_object)
+					else:
+							user_ids.append(_object.get("user_id"))
+							users.append(_object)
 
 			result = {"users": users,"user_ids": user_ids}
 			result.update({"user_count": count, "pages":  math.ceil(count/limit)})
 
-			pprint (result)
 			message = {"error": False, "success": True, "message": None, "data": result}
 
 		except Exception as e:
