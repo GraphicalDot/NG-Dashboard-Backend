@@ -248,6 +248,7 @@ class Users(tornado.web.RequestHandler):
 
 
 		users_result = []
+		user = yield self.collection.find_one({"user_id": user_id}, projection={"_id": False, "ngrams": False})
 		try:
 
 			if search_text:
@@ -266,14 +267,26 @@ class Users(tornado.web.RequestHandler):
 
 			user_ids = []
 			users = []
+
+			##Now the filtering part, A user shall not be shown its her own record.
+			## A general or admin shall not be shown superadmin record.
+			## A general user shouldnt be shown admin or superadmin record
 			for _object in users_result:
-				print (_object)
-				
 				if not _object.get("user_id") == user_id:
-						user_ids.append(_object.get("user_id"))
-						if not _object["user_type"]:
-							_object.update({"user_type": "general"})
-						users.append(_object)
+					if user["user_type"] != "superadmin" or user["user_type"] != "admin":
+						if not _object.get("user_type") == "superadmin" or not _object.get("user_type") == "admin":
+							user_ids.append(_object.get("user_id"))
+							users.append(_object)
+					elif user["user_type"] == "admin": 
+						if _object.get("user_type") == "admin":
+							user_ids.append(_object.get("user_id"))
+							users.append(_object)
+					elif user["user_type"] == "superadmin": 
+						if _object.get("user_type") == "superadmin":
+							user_ids.append(_object.get("user_id"))
+							users.append(_object)
+
+
 			result = {"users": users,"user_ids": user_ids}
 			result.update({"user_count": count, "pages":  math.ceil(count/limit)})
 
