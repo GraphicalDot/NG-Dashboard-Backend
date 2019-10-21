@@ -29,7 +29,7 @@ six==1.10.0
 tornado==4.5.1
 tornaduv==0.4.0
 traitlets==4.3.2
-urllib3==1.21.1
+urllib3==1.24.2
 uvloop==0.8.0
 wcwidth==0.1.7
 wrapt==1.10.10
